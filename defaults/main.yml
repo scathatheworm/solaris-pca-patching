@@ -1,9 +1,15 @@
 ---
 # defaults file for solaris-pca-patching
 solaris_pca_operand: missingrs
-solaris_pca_update: True
+solaris_pca_update: true
 mos_user: test.user@domain.com
 mos_password: abcd1234
 pca_basedir: /var/pca
 pca_tempdir: /var/tmp
-pca_minfreezoneroot: 2621440
+pca_prereq: prereq_list.txt
+pca_downloadfirst: true
+pca_patchdiag_minute_schedule: '0'
+pca_patchdiag_hour_schedule: '0'
+pca_patchdiag_dom_schedule: '1'
+pca_patchdiag_monthly_schedule: '*/3'
+pca_patchdiag_dow_schedule: '*'
