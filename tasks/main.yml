@@ -3,9 +3,13 @@
 - name: Cleanup working environment
   file: path={{ pca_tempdir }}/pca_patches
         state=absent
+  tags: setup
 
 - name: Setup working directory
-  local_action: shell mkdir -p {{ pca_basedir }}/{{ inventory_hostname }}
+  file: path={{ pca_basedir }}/{{ inventory_hostname }}
+        state=directory
+  delegate_to: localhost
+  tags: setup
 
 - name: Get PCA script
   get_url: 
@@ -18,12 +22,14 @@
   delegate_to: localhost
   run_once: true
   when: pca_downloadfirst
+  tags: setup
 
 - name: Update PCA
   local_action: shell {{ pca_basedir }}/pca --update now
   register: updatepca
   changed_when: updatepca.stdout != 'No new version available'
   run_once: true
+  tags: setup
 
 - name: Set cronjob for downloading patchdiag.xref on desired schedule
   cron: name='Download patchdiag file from oracle'
@@ -37,23 +43,27 @@
         job='wget --no-check-certificate https://getupdates.oracle.com/reports/patchdiag.xref -O {{ pca_basedir }}/patchdiag.xref.`date +%Y%m%d`'
   delegate_to: localhost
   run_once: true
+  tags: setup
 
 - name: Get which is the latest available patchdiag file
-  local_action: shell ls -t `find /var/pca -name patchdiag.xref.20[1-2][0-9][0-1][0-9][0-3][0-9]` 2>/dev/null | head -n1
+  local_action: shell find {{pca_basedir }} -name patchdiag.xref.20[1-2][0-9][0-1][0-9][0-3][0-9] -exec ls -1t '{}' \;| head -n1 | wc -l
   register: latest_patchdiag
   changed_when: false
   run_once: true
+  tags: setup
 
 - name: Download latest patchdiag.xref if there is none present
   local_action: shell wget --no-check-certificate https://getupdates.oracle.com/reports/patchdiag.xref -O {{ pca_basedir }}/patchdiag.xref.`date +%Y%m%d`
   run_once: true
-  when: latest_patchdiag.stdout == ""
+  when: latest_patchdiag.stdout == '0'
+  tags: setup
 
 - name: Set patchdiag target file variable
   local_action: shell ls -t `find /var/pca -name patchdiag.xref.20[1-2][0-9][0-1][0-9][0-3][0-9]` 2>/dev/null | head -n1
   register: active_patchdiag_file
   changed_when: false
   run_once: true
+  tags: setup
 
 - name: Link latest patchdiag for use by PCA
   file: src={{ active_patchdiag_file.stdout }}
@@ -61,12 +71,14 @@
         path={{ pca_basedir }}/patchdiag.xref
   delegate_to: localhost
   run_once: true
+  tags: setup
 
 - name: Collect information from target Solaris system for PCA
   shell: showrev -p > {{ pca_tempdir }}/showrev.out ; uname -a > {{ pca_tempdir }}/uname.out ; pkginfo -x > {{ pca_tempdir }}/pkginfo.out
+  tags: setup
 
 - name: Pull files for PCA analysis
-  fetch: dest={{ pca_basedir }}/{{ inventory_hostname }}
+  fetch: dest={{ pca_basedir }}/{{ inventory_hostname }}/{{ item }}
          src={{ pca_tempdir }}/{{ item }}
          fail_on_missing=yes
          flat=yes
@@ -74,34 +86,56 @@
   - showrev.out
   - uname.out
   - pkginfo.out
+  tags: setup
 
 - name: Generate patchlist
-  local_action: shell {{ pca_basedir }}/pca -l {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print "{{ pca_basedir }}/patches/" $1 "-" $4 ".zip" }' > {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
+  local_action: shell {{ pca_basedir }}/pca -l {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' > {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
+  tags: setup
+
+- name: Place prereq file in global workdir
+  copy: src={{ pca_prereq }}
+        dest={{ pca_basedir }}/{{ pca_prereq }}
+  delegate_to: localhost
+  tags: setup
+  run_once: true
 
 - name: Append prereq patchlist
-  local_action: shell {{ pca_basedir }}/pca -l {{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print "{{ pca_basedir }}/patches/" $1 "-" $4 ".zip" }' >> {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
+  local_action: shell {{ pca_basedir }}/pca -l {{ pca_basedir }}/{{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' >> {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
+  tags: setup
+
+- name: Setup pca patch dir repository
+  file: path={{ pca_basedir }}/patches
+        state=directory
+  delegate_to: localhost
+  run_once: true
+  tags: setup
 
 - name: Download required patches from Oracle
   local_action: shell {{ pca_basedir }}/pca -d {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }}
+  tags: stage
 
 - name: Download prereq patches from Oracle
-  local_action: shell {{ pca_basedir }}/pca -d {{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }}
+  local_action: shell {{ pca_basedir }}/pca -d {{ pca_basedir }}/{{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }}
+  tags: stage
 
 - name: Get Patch Bundle Size
-  local_action: shell bundlesize=0 ; for i in `cat {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out` ; do filesize=`du -sk $i | awk '{print $1}'` ; bundlesize=$(($bundlesize+$filesize)) ; done ; echo $bundlesize
+  local_action: shell bundlesize=0 ; for i in `cat {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out` ; do filesize=`du -sk {{ pca_basedir }}/patches/$i | awk '{print $1}'` ; bundlesize=$(($bundlesize+$filesize)) ; done ; echo $bundlesize
   register: pca_bundlesize
   changed_when: false
+  tags: stage
 
 - name: Check there is enough free space in defined tempdir
   shell: df -b {{ pca_tempdir }} | tail -1 | awk '{print $2}'
   register: tempspace
   failed_when: "tempspace.stdout|int <= pca_bundlesize.stdout|int*3"
   changed_when: false
+  tags: check
 
 - name: Get zones root filesystems to check for space
   shell: "awk -F: '!/^#/{ print $3 }' /etc/zones/index"
   register: zoneroot
   changed_when: false
+  tags: check
 
 - name: Check there is enough free space in each zone root FS
   shell: df -b {{ item }} | tail -1 | awk '{print $2}'
@@ -109,12 +143,14 @@
   failed_when: "zonerootspace.stdout|int <= pca_bundlesize.stdout|int*3"
   with_items: "{{ zoneroot.stdout_lines }}"
   changed_when: false
+  tags: check
 
 - name: Upload patches to server
   synchronize: src={{ pca_basedir }}/patches
                dest={{ pca_tempdir }}/pca_patches
                compress=no
                rsync_opts="--files-from={{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out"
+  tags: deploy
 
 - name: Upload PCA script
   copy: src={{ pca_basedir }}/pca
@@ -122,6 +158,7 @@
         owner=root
         group=root
         mode=0755
+  tags: deploy
 
 - name: Upload patchdiag.xref
   copy: src={{ pca_basedir }}/patchdiag.xref
@@ -129,6 +166,7 @@
         owner=root
         group=root
         mode=0644
+  tags: deploy
 
 - name: get current date for reference as ABE name
   command: date +%Y%m%d
