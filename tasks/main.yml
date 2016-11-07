@@ -122,7 +122,19 @@
   local_action: shell bundlesize=0 ; for i in `cat {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out` ; do filesize=`du -sk {{ pca_basedir }}/patches/$i | awk '{print $1}'` ; bundlesize=$(($bundlesize+$filesize)) ; done ; echo $bundlesize
   register: pca_bundlesize
   changed_when: false
-  tags: stage
+  tags: check
+
+- name: Find inactive BEs
+  shell: /usr/sbin/lustatus | awk '$5 == "yes" { print $1 }'
+  register: inactive_bes
+  changed_when: false
+  tags: cleanup
+
+- name: Remove inactive BEs if any
+  shell: /usr/sbin/ludelete {{ item }}
+  with_items: "{{ inactive_bes.stdout_lines }}"
+  when: inactive_bes.stdout_lines|length > 0
+  tags: cleanup
 
 - name: Check there is enough free space in defined tempdir
   shell: df -b {{ pca_tempdir }} | tail -1 | awk '{print $2}'
@@ -173,38 +185,54 @@
   register: pca_abe
   changed_when: false
   always_run: true
+  tags: install
+
+- name: Copy prereq list
+  copy: src={{ pca_prereq }}
+        dest={{ pca_tempdir}}/pca_patches/{{ pca_prereq }}
+  tags: install
 
 - name: Install prerequisite patches in live BE
-  shell: "{{ pca_tempdir }}/pca -i {{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches"
+  shell: "{{ pca_tempdir }}/pca -i {{ pca_tempdir}}/pca_patches/{{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches"
+  tags: install
 
 - name: Create ABE
   shell: /usr/sbin/lucreate -n {{ pca_abe.stdout }}
+  tags: install
 
 - name: Mount ABE
   shell: /usr/sbin/lumount {{ pca_abe.stdout }}
+  tags: install
 
 - name: Fix for Sun CR 6804076
   lineinfile: dest=/.alt.{{ pca_abe.stdout }}/etc/zones/index
               regexp='^global{{":"}}configured.*'
               backrefs=yes
               line='global{{":"}}installed{{":"}}/'
+  tags: install
 
 - name: Dry Run patch installation to ABE
   shell: "{{ pca_tempdir }}/pca -I {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}"
+  tags: install
 
 - name: Install patches to ABE
   shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}"
+  tags: install
 
 - name: Update ABE Ramdisk
   shell: /.alt.{{ pca_abe.stdout }}/boot/solaris/bin/create_ramdisk -R /.alt.{{ pca_abe.stdout }}
+  tags: install
 
 - name: Cleanup ABE pushed patch repo
   file: path=/.alt.{{ pca_abe.stdout }}{{ pca_tempdir }}/pca_patches
         state=absent
+  tags: install
 
 - name: Cleanup pushed patch repo
   file: path={{ pca_tempdir }}/pca_patches
         state=absent
+  tags: install
 
 - name: Umount ABE
   shell: /usr/sbin/luumount {{ pca_abe.stdout }}
+  tags: install
