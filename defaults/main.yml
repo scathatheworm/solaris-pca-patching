@@ -1,0 +1,9 @@
+---
+# defaults file for solaris-pca-patching
+solaris_pca_operand: missingrs
+solaris_pca_update: True
+mos_user: test.user@domain.com
+mos_password: abcd1234
+pca_basedir: /var/pca
+pca_tempdir: /var/tmp
+pca_minfreezoneroot: 2621440

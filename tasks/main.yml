@@ -1,0 +1,108 @@
+---
+# tasks file for solaris-pca-patching
+- name: Setup working directory
+  local_action: shell mkdir -p {{ pca_basedir }}/{{ inventory_hostname }}
+
+- name: Get PCA script
+#  shell: {{ pca_basedir }}/pca --update now
+  get_url: 
+    url: http://www.par.univie.ac.at/solaris/pca/stable/pca
+    dest: {{ pca_basedir }}/pca
+    owner: root
+    group: root
+    mode: 0755
+    checksum: md5: 2745e21d035aa068ae23a530a9378dff
+
+- name: Collect information from target Solaris system for PCA
+  shell: showrev -p > {{ pca_tempdir }}/showrev.out ; uname -a > {{ pca_tempdir }}/uname.out ; pkginfo -x > {{ pca_tempdir }}/pkginfo.out
+
+- name: Pull files for PCA analysis
+  fetch: dest={{ pca_basedir }}/{{ inventory_hostname }}
+         src={{ pca_tempdir }}/{{ item }}
+         fail_on_missing=yes
+         flat=yes
+  with_items:
+  - showrev.out
+  - uname.out
+  - pkginfo.out
+
+- name: Generate patchlist
+  local_action: shell {{ pca_basedir }}/pca -l {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print "{{ pca_basedir }}/patches/" $1 "-" $4 ".zip" }' > {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
+
+- name: Download required patches from Oracle
+  local_action: shell {{ pca_basedir }}/pca -d {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }}
+
+- name: Get Patch Bundle Size
+  local_action: shell bundlesize=0 ; for i in `cat {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out` ; do filesize=`du -sk $i | awk '{print $1}'` ; bundlesize=$(($bundlesize+$filesize)) ; done ; echo $bundlesize
+  register: pca_bundlesize
+  changed_when: false
+
+- name: Check there is enough free space in defined tempdir
+  shell: df -b {{ pca_tempdir }} | tail -1 | awk '{print $2}'
+  register: tempspace
+  failed_when: "tempspace.stdout|int <= pca_bundlesize.stdout|int*3"
+  changed_when: false
+
+- name: Get zones root filesystems to check for space
+  shell: "awk -F: '!/^#/{ print $3 }' /etc/zones/index"
+  register: zoneroot
+  changed_when: false
+
+- name: Check there is enough free space in each zone root FS
+  shell: df -b {{ item }} | tail -1 | awk '{print $2}'
+  register: zonerootspace
+  failed_when: "zonerootspace.stdout|int <= pca_minfreezoneroot"
+  with_items: "{{ zoneroot.stdout_lines }}"
+  changed_when: false
+
+- name: Upload patches to server
+  synchronize: src={{ pca_basedir }}/patches
+               dest={{ pca_tempdir }}/pca_patches
+               compress=no
+               rsync_opts="--files-from={{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out"
+
+- name: Upload PCA script
+  copy: src={{ pca_basedir }}/pca
+        dest={{ pca_tempdir }}/pca
+        owner=root
+        group=root
+        mode=0755
+
+- name: Upload patchdiag.xref
+  copy: src={{ pca_basedir }}/patchdiag.xref
+        dest={{ pca_tempdir }}/pca_patches/patchdiag.xref
+        owner=root
+        group=root
+        mode=0644
+
+- name: get current date for reference as ABE name
+  command: date +%Y%m%d
+  register: pca_abe
+  changed_when: false
+  always_run: true
+
+- name: Install prerequisite patches in global zone
+
+- name: Create ABE
+  shell: lucreate -n {{ pca_abe.stdout }}
+  environment:
+    PATH: /usr/sbin:{{ ansible_env.PATH }}
+
+- name: Mount ABE
+  shell: lumount {{ pca_abe.stdout }}
+  environment:
+    PATH: /usr/sbin:{{ ansible_env.PATH }}
+
+- name: Dry Run patch installation to ABE
+  shell: {{ pca_tempdir }}/pca -I {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}
+
+- name: Install patches to ABE
+  shell: {{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}
+
+- name: Update ABE Ramdisk
+  shell: /.alt.{{ pca_abe.stdout }}/boot/solaris/bin/create_ramdisk -R /.alt.{{ pca_abe.stdout }}
+
+- name: Umount ABE
+  shell: luumount {{ pca_abe.stdout }}
+  environment:
+    PATH: /usr/sbin:{{ ansible_env.PATH }}
