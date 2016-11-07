@@ -10,7 +10,7 @@
 - name: Get PCA script
   get_url: 
     url: http://www.par.univie.ac.at/solaris/pca/download/pca-20150327-01
-    dest: {{ pca_basedir }}/pca
+    dest: "{{ pca_basedir }}/pca"
     owner: root
     group: root
     mode: 0755
@@ -26,7 +26,7 @@
   run_once: true
 
 - name: Set cronjob for downloading patchdiag.xref on desired schedule
-  cron: name=Download patchdiag file from oracle
+  cron: name='Download patchdiag file from oracle'
         cron_file=/etc/crontab
         user=root
         minute={{ pca_patchdiag_minute_schedule }}
@@ -137,7 +137,7 @@
   always_run: true
 
 - name: Install prerequisite patches in live BE
-  shell: {{ pca_tempdir }}/pca -i {{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches
+  shell: "{{ pca_tempdir }}/pca -i {{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches"
 
 - name: Create ABE
   shell: /usr/sbin/lucreate -n {{ pca_abe.stdout }}
@@ -152,10 +152,10 @@
               line='global{{":"}}installed{{":"}}/'
 
 - name: Dry Run patch installation to ABE
-  shell: {{ pca_tempdir }}/pca -I {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}
+  shell: "{{ pca_tempdir }}/pca -I {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}"
 
 - name: Install patches to ABE
-  shell: {{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}
+  shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}"
 
 - name: Update ABE Ramdisk
   shell: /.alt.{{ pca_abe.stdout }}/boot/solaris/bin/create_ramdisk -R /.alt.{{ pca_abe.stdout }}
