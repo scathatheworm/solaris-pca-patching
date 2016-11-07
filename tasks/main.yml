@@ -1,5 +1,9 @@
 ---
 # tasks file for solaris-pca-patching
+- name: Cleanup working environment
+  file: path={{ pca_tempdir }}/pca_patches
+        state=absent
+
 - name: Setup working directory
   local_action: shell mkdir -p {{ pca_basedir }}/{{ inventory_hostname }}
 
@@ -155,6 +159,14 @@
 
 - name: Update ABE Ramdisk
   shell: /.alt.{{ pca_abe.stdout }}/boot/solaris/bin/create_ramdisk -R /.alt.{{ pca_abe.stdout }}
+
+- name: Cleanup ABE pushed patch repo
+  file: path=/.alt.{{ pca_abe.stdout }}{{ pca_tempdir }}/pca_patches
+        state=absent
+
+- name: Cleanup pushed patch repo
+  file: path={{ pca_tempdir }}/pca_patches
+        state=absent
 
 - name: Umount ABE
   shell: /usr/sbin/luumount {{ pca_abe.stdout }}

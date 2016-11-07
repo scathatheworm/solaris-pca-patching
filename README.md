@@ -1,38 +1,23 @@
-Role Name
-=========
+# Solaris PCA Patching - ABE setup
+Ansible Role for fully patching an ABE in solaris 10 with ZFS root and PCA+live upgrade
 
-A brief description of the role goes here.
+## Description
 
-Requirements
-------------
+This role will setup a PCA working environment using the ansible server as a PCA proxy-style host that will push patches to hosts based on configured rules.
+The schedule settings result in a quarterly refresh of patchdiag.xref
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
-
-Role Variables
---------------
-
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
-
-Dependencies
-------------
-
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
-
-Example Playbook
-----------------
-
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
-
-License
--------
-
-BSD
-
-Author Information
-------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+| Name           | Default Value | Description                        |
+| -------------- | ------------- | -----------------------------------|
+| `solaris_pca_operand` | missingrs | PCA operands to use for patching, see PCA documentation for possible values |
+| `solaris_pca_update` | true | Controls if the playbook will attempt PCA autoupdate |
+| `mos_user` | test.user@domain.com | This needs to be changed to a valid MOS username, to fetch patches |
+| `mos_password` | abcd1234 | MOS password for above MOS username |
+| `pca_basedir` | /var/pca | Path to ansible master pca installation/repo |
+| `pca_tempdir` | /var/tmp | Temp dir to be used in target hosts for storing patches and other data |
+| `pca_prereq` | prereq_list.txt | prepreq patches that should be installed to avoid issues with patching process |
+| `pca_downloadfirst` | true | Controls if playbook should download a copy of the PCA script validated with checksum from the official site |
+| `pca_patchdiag_minute_schedule` | '0' | Controls cron job for patchdiag.xref download |
+| `pca_patchdiag_hour_schedule` | '0' | Controls cron job for patchdiag.xref download |
+| `pca_patchdiag_dom_schedule` | '1' | Controls cron job for patchdiag.xref download |
+| `pca_patchdiag_monthly_schedule` | '*/3' | Controls cron job for patchdiag.xref download |
+| `pca_patchdiag_dow_schedule` | '*' | Controls cron job for patchdiag.xref download |
