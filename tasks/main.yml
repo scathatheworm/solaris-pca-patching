@@ -1,5 +1,25 @@
 ---
 # tasks file for solaris-pca-patching
+- name: Gather facts
+  setup:
+  always_run: true
+  tags: health,setup,cleanup,check,stage,install,activate
+
+- name: Check health of all ZFS pools
+  shell: /usr/sbin/zpool status -x
+  register: zpoolstatus
+  failed_when: zpoolstatus.stdout != 'all pools are healthy'
+  changed_when: false
+  tags: health
+
+- name: Check root filesystem for mirror status
+  shell: /usr/sbin/zpool status `echo {{ item.device }} | cut -d/ -f1` | grep ONLINE | wc -l
+  register: zfsrootpool
+  whith_items: ansible_mounts
+  when: item.mount == '/'
+  failed_when: item.fstype != 'zfs' or zfsrootpool.stdout|int >= 5
+  tags: health
+
 - name: Cleanup working environment
   file: path={{ pca_tempdir }}/pca_patches
         state=absent
@@ -110,6 +130,18 @@
   run_once: true
   tags: setup
 
+- name: Find inactive BEs
+  shell: /usr/sbin/lustatus | awk '$5 == "yes" { print $1 }'
+  register: inactive_bes
+  changed_when: false
+  tags: cleanup
+
+- name: Remove inactive BEs if any
+  shell: /usr/sbin/ludelete {{ item }}
+  with_items: "{{ inactive_bes.stdout_lines }}"
+  when: inactive_bes.stdout_lines|length > 0
+  tags: cleanup
+
 - name: Download required patches from Oracle
   local_action: shell {{ pca_basedir }}/pca -d {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }}
   tags: stage
@@ -123,18 +155,6 @@
   register: pca_bundlesize
   changed_when: false
   tags: check
-
-- name: Find inactive BEs
-  shell: /usr/sbin/lustatus | awk '$5 == "yes" { print $1 }'
-  register: inactive_bes
-  changed_when: false
-  tags: cleanup
-
-- name: Remove inactive BEs if any
-  shell: /usr/sbin/ludelete {{ item }}
-  with_items: "{{ inactive_bes.stdout_lines }}"
-  when: inactive_bes.stdout_lines|length > 0
-  tags: cleanup
 
 - name: Check there is enough free space in defined tempdir
   shell: df -b {{ pca_tempdir }} | tail -1 | awk '{print $2}'
@@ -216,7 +236,7 @@
   tags: install
 
 - name: Install patches to ABE
-  shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}"
+  shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R /.alt.{{ pca_abe.stdout }}"
   tags: install
 
 - name: Update ABE Ramdisk
@@ -236,3 +256,27 @@
 - name: Umount ABE
   shell: /usr/sbin/luumount {{ pca_abe.stdout }}
   tags: install
+
+- name: Create dir for custom facts
+  file: state=directory
+        recurse=yes
+        path=/etc/ansible/facts.d
+  tags: install
+
+- name: Populate custom fact with ABE ready for activation
+  template: src=pca.fact.j2
+            dest=/etc/ansible/facts.d/pca.fact
+  tags: install
+
+- name: Re-run setup to load local facts
+  setup: filter=ansible_local
+  tags: activate
+  when: pca_reboot_now
+
+- name: Activate patched ABE
+  shell: /usr/sbin/luactivate {{ ansible_local.pca.abe.pending }}
+  register: activated
+  tags: activate
+  changed_when: "activated.stdout != 'WARNING: Boot environment <{{ ansible_local.pca.abe.pending }}> is already activated.'"
+  when: pca_reboot_now
+  notify: reboot sequence

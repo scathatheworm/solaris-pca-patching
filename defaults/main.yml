@@ -13,3 +13,5 @@ pca_patchdiag_hour_schedule: '0'
 pca_patchdiag_dom_schedule: '1'
 pca_patchdiag_monthly_schedule: '*/3'
 pca_patchdiag_dow_schedule: '*'
+pca_reboot_now: false
+pca_ignorelist:

@@ -1,2 +1,23 @@
 ---
 # handlers file for solaris-pca-patching
+- name: reboot sequence
+  changed_when: "true"
+  debug: msg='trigger machine reboot sequence'
+  notify:
+    - get current time
+    - reboot system
+    - waiting for server to come back
+    - verify a reboot was actually initiated
+
+- name: get current time
+  command: /bin/date +%s
+  register: before_reboot
+  sudo: false
+
+- name: reboot system
+  command: /usr/sbin/shutdown -y -g5 -i6 "Ansible initiated reboot to activate patched ABE {{ ansible_local.pca.abe.pending }}"
+  ignore_errors: true
+
+- name: waiting for server to come back
+  local_action: wait_for host={{ inventory_hostname }} state=started delay=600 timeout=1200 search_regex=SSH port=22 
+  sudo: false
