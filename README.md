@@ -25,3 +25,16 @@ The schedule settings result in a quarterly refresh of patchdiag.xref
 | `pca_ignorelist` | empty | PCA ignore list, as given in PCA documentation (quote for space separated list |
 
 This is intended to be used in a playbook where first run sets up the ABE, and a second run will need to be run with --extra-vars="pca_reboot_now: true" to perform ABE activation and reboot.
+
+Available tags are:
+
+| Name           | Description                   |
+| -------------- | ----------------------------- |
+| `health` | Checks ZFS for health and mirrored status |
+| `setup` | Does all PCA setup and configuration readiness for each host |
+| `cleanup` | Gets rid of preexisting unwanted unmanaged BEs |
+| `stage` | Downloads required patches from Oracle and places them in common repo |
+| `check` | Performs space checks on target hosts for ABE install and patch |
+| `deploy` | Copies patches and PCA required files to target hosts |
+| `install` | Creates ABE, installs prereqs and patches ABE |
+| `activate` | activates patched ABE and reboots into it |
