@@ -21,3 +21,7 @@ The schedule settings result in a quarterly refresh of patchdiag.xref
 | `pca_patchdiag_dom_schedule` | '1' | Controls cron job for patchdiag.xref download |
 | `pca_patchdiag_monthly_schedule` | '*/3' | Controls cron job for patchdiag.xref download |
 | `pca_patchdiag_dow_schedule` | '*' | Controls cron job for patchdiag.xref download |
+| `pca_reboot_now` | false | Wether to run the actual ABE activation and reboot commands |
+| `pca_ignorelist` | empty | PCA ignore list, as given in PCA documentation (quote for space separated list |
+
+This is intended to be used in a playbook where first run sets up the ABE, and a second run will need to be run with --extra-vars="pca_reboot_now: true" to perform ABE activation and reboot.
