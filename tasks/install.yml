@@ -1,0 +1,54 @@
+---
+- name: get current date for reference as ABE name
+  command: date +%Y%m%d
+  register: pca_abe
+  changed_when: false
+  always_run: true
+
+- name: Copy prereq list
+  copy: src={{ pca_prereq }}
+        dest={{ pca_tempdir}}/pca_patches/{{ pca_prereq }}
+
+- name: Install prerequisite patches in live BE
+  shell: "{{ pca_tempdir }}/pca -i {{ pca_tempdir}}/pca_patches/{{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches"
+
+- name: Fix for Sun CR 6804076
+  lineinfile: dest=/etc/zones/index
+              regexp='^global{{":"}}configured.*'
+              backrefs=yes
+              line='global{{":"}}installed{{":"}}/'
+
+- name: Create ABE
+  shell: /usr/sbin/lucreate -n {{ pca_abe.stdout }}
+
+- name: Mount ABE
+  shell: /usr/sbin/lumount {{ pca_abe.stdout }}
+
+- name: Dry Run patch installation to ABE
+  shell: "{{ pca_tempdir }}/pca -I {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}"
+
+- name: Install patches to ABE
+  shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R /.alt.{{ pca_abe.stdout }}"
+
+- name: Update ABE Ramdisk
+  shell: /.alt.{{ pca_abe.stdout }}/boot/solaris/bin/create_ramdisk -R /.alt.{{ pca_abe.stdout }}
+
+- name: Cleanup ABE pushed patch repo
+  file: path=/.alt.{{ pca_abe.stdout }}{{ pca_tempdir }}/pca_patches
+        state=absent
+
+- name: Cleanup pushed patch repo
+  file: path={{ pca_tempdir }}/pca_patches
+        state=absent
+
+- name: Umount ABE
+  shell: /usr/sbin/luumount {{ pca_abe.stdout }}
+
+- name: Create dir for custom facts
+  file: state=directory
+        recurse=yes
+        path=/etc/ansible/facts.d
+
+- name: Populate custom fact with ABE ready for activation
+  template: src=pca.fact.j2
+            dest=/etc/ansible/facts.d/pca.fact

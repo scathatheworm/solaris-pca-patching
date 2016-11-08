@@ -1,0 +1,11 @@
+---
+- name: Re-run setup to load local facts
+  setup: filter=ansible_local
+  when: pca_reboot_now
+
+- name: Activate patched ABE
+  shell: /usr/sbin/luactivate {{ ansible_local.pca.abe.pending }}
+  register: activated
+  changed_when: "activated.stdout != 'WARNING: Boot environment <{{ ansible_local.pca.abe.pending }}> is already activated.'"
+  when: pca_reboot_now
+  notify: reboot sequence

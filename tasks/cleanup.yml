@@ -1,0 +1,10 @@
+---
+- name: Find inactive BEs
+  shell: /usr/sbin/lustatus | awk '$5 == "yes" { print $1 }'
+  register: inactive_bes
+  changed_when: false
+
+- name: Remove inactive BEs if any
+  shell: /usr/sbin/ludelete {{ item }}
+  with_items: "{{ inactive_bes.stdout_lines }}"
+  when: inactive_bes.stdout_lines|length > 0

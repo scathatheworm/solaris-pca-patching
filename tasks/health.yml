@@ -1,0 +1,13 @@
+---
+- name: Check health of all ZFS pools
+  shell: /usr/sbin/zpool status -x
+  register: zpoolstatus
+  failed_when: zpoolstatus.stdout != 'all pools are healthy'
+  changed_when: false
+
+- name: Check root filesystem for mirror status
+  shell: /usr/sbin/zpool status `echo {{ item.device }} | cut -d/ -f1` | grep ONLINE | wc -l
+  register: zfsrootpool
+  whith_items: ansible_mounts
+  when: item.mount == '/'
+  failed_when: item.fstype != 'zfs' or zfsrootpool.stdout|int >= 5

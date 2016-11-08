@@ -1,0 +1,6 @@
+---
+- name: Download required patches from Oracle
+  local_action: shell {{ pca_basedir }}/pca -d {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }}
+
+- name: Download prereq patches from Oracle
+  local_action: shell {{ pca_basedir }}/pca -d {{ pca_basedir }}/{{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }}
