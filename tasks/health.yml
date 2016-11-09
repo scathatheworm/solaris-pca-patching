@@ -8,6 +8,7 @@
 - name: Check root filesystem for mirror status
   shell: /usr/sbin/zpool status `echo {{ item.device }} | cut -d/ -f1` | grep ONLINE | wc -l
   register: zfsrootpool
-  whith_items: ansible_mounts
+  with_items: '{{ ansible_mounts }}'
   when: item.mount == '/'
-  failed_when: item.fstype != 'zfs' or zfsrootpool.stdout|int >= 5
+  changed_when: false
+  failed_when: item.fstype != 'zfs' or zfsrootpool.stdout|int < 5

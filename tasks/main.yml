@@ -3,13 +3,28 @@
   setup:
   always_run: true
   tags: health,setup,cleanup,check,stage,install,activate
+  when:
+  - ansible_os_family == 'Solaris'
+  - ansible_distribution_version == '10'
+  - ansible_container is not defined
+
+- name: Check if there is an ABE pending activation
+  command: /usr/bin/grep pending /etc/ansible/facts.d/pca.fact
+  changed_when: false
+  failed_when: false
+  register: pca_abe_pending
+  tags: health,setup,cleanup,check,stage,install,activate
+  when:
+  - ansible_os_family == 'Solaris'
+  - ansible_distribution_version == '10'
+  - ansible_container is not defined
 
 - include: health.yml
   when:
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'
   - ansible_container is not defined
-  - ansible_local.pca.abe.pending is not defined
+  - pca_abe_pending.rc != '0'
   tags: health
 
 - include: setup.yml
@@ -17,7 +32,7 @@
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'
   - ansible_container is not defined
-  - ansible_local.pca.abe.pending is not defined
+  - pca_abe_pending.rc != '0'
   tags: setup
 
 - include: cleanup.yml
@@ -25,7 +40,7 @@
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'
   - ansible_container is not defined
-  - ansible_local.pca.abe.pending is not defined
+  - pca_abe_pending.rc != '0'
   tags: cleanup
 
 - include: stage.yml
@@ -33,7 +48,7 @@
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'
   - ansible_container is not defined
-  - ansible_local.pca.abe.pending is not defined
+  - pca_abe_pending.rc != '0'
   tags: stage
 
 - include: check.yml
@@ -41,7 +56,7 @@
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'
   - ansible_container is not defined
-  - ansible_local.pca.abe.pending is not defined
+  - pca_abe_pending.rc != '0'
   tags: check
 
 - include: deploy.yml
@@ -49,7 +64,7 @@
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'
   - ansible_container is not defined
-  - ansible_local.pca.abe.pending is not defined
+  - pca_abe_pending.rc != '0'
   tags: deploy
 
 - include: install.yml
@@ -57,7 +72,7 @@
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'
   - ansible_container is not defined
-  - ansible_local.pca.abe.pending is not defined
+  - pca_abe_pending.rc != '0'
   tags: install
 
 - include: activate.yml
