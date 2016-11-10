@@ -1,12 +1,21 @@
 ---
-- name: Cleanup working environment
-  file: path={{ pca_tempdir }}/pca_patches
-        state=absent
+- name: Setup PCA patch dir repository
+  file: path={{ pca_basedir }}/patches
+        state=directory
+  delegate_to: localhost
+  run_once: true
 
 - name: Setup working directory
   file: path={{ pca_basedir }}/{{ inventory_hostname }}
         state=directory
+        mode=0777
   delegate_to: localhost
+
+- name: Place prereq file in global workdir
+  copy: src={{ pca_prereq }}
+        dest={{ pca_basedir }}/{{ pca_prereq }}
+  delegate_to: localhost
+  run_once: true
 
 - name: Get PCA script
   get_url: 
@@ -45,8 +54,16 @@
   changed_when: false
   run_once: true
 
+- name: Get current date
+  command: date +%Y%m%d
+  register: current_date
+  changed_when: false
+
 - name: Download latest patchdiag.xref if there is none present
-  local_action: shell wget --no-check-certificate https://getupdates.oracle.com/reports/patchdiag.xref -O {{ pca_basedir }}/patchdiag.xref.`date +%Y%m%d`
+  get_url: 
+    url: https://getupdates.oracle.com/reports/patchdiag.xref
+    dest: "{{ pca_basedir }}/patchdiag.xref.{{ current_date.stdout }}"
+  delegate_to: localhost
   run_once: true
   when: latest_patchdiag.stdout == '0'
 
@@ -64,7 +81,10 @@
   run_once: true
 
 - name: Collect information from target Solaris system for PCA
-  shell: showrev -p > {{ pca_tempdir }}/showrev.out ; uname -a > {{ pca_tempdir }}/uname.out ; pkginfo -x > {{ pca_tempdir }}/pkginfo.out
+  script: pca_analysis_files.sh
+  register: pca_analysis_files
+  changed_when: pca_analysis_files.rc == 2
+  failed_when: pca_analysis_files.rc == 1
 
 - name: Pull files for PCA analysis
   fetch: dest={{ pca_basedir }}/{{ inventory_hostname }}/{{ item }}
@@ -78,18 +98,8 @@
 
 - name: Generate patchlist
   local_action: shell {{ pca_basedir }}/pca -l {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' > {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
-
-- name: Place prereq file in global workdir
-  copy: src={{ pca_prereq }}
-        dest={{ pca_basedir }}/{{ pca_prereq }}
-  delegate_to: localhost
-  run_once: true
+  changed_when: false
 
 - name: Append prereq patchlist
   local_action: shell {{ pca_basedir }}/pca -l {{ pca_basedir }}/{{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' >> {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
-
-- name: Setup pca patch dir repository
-  file: path={{ pca_basedir }}/patches
-        state=directory
-  delegate_to: localhost
-  run_once: true
+  changed_when: false

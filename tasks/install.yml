@@ -34,12 +34,26 @@
   shell: /.alt.{{ pca_abe.stdout }}/boot/solaris/bin/create_ramdisk -R /.alt.{{ pca_abe.stdout }}
 
 - name: Cleanup ABE pushed patch repo
-  file: path=/.alt.{{ pca_abe.stdout }}{{ pca_tempdir }}/pca_patches
+  file: path=/.alt.{{ pca_abe.stdout }}{{ pca_tempdir }}/{{ item }}
         state=absent
+  with_items:
+  - pca_patches
+  - pca
+  - showrev.out
+  - pkginfo.out
+  - uname.out
+  - patchdiag.xref
 
 - name: Cleanup pushed patch repo
-  file: path={{ pca_tempdir }}/pca_patches
+  file: path={{ pca_tempdir }}/{{ item }}
         state=absent
+  with_items:
+  - pca_patches
+  - pca
+  - showrev.out
+  - pkginfo.out
+  - uname.out
+  - patchdiag.xref
 
 - name: Umount ABE
   shell: /usr/sbin/luumount {{ pca_abe.stdout }}
