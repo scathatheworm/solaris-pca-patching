@@ -74,11 +74,3 @@
   - ansible_container is not defined
   - pca_abe_pending.rc != '0'
   tags: install
-
-- include: activate.yml
-  when:
-  - ansible_os_family == 'Solaris'
-  - ansible_distribution_version == '10'
-  - ansible_container is not defined
-  - pca_reboot_now
-  tags: activate

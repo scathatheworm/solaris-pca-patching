@@ -6,6 +6,8 @@ Ansible Role for fully patching an ABE in solaris 10 with ZFS root and PCA+live 
 This role will setup a PCA working environment using the ansible server as a PCA proxy-style host that will push patches to hosts based on configured rules.
 The schedule settings result in a quarterly refresh of patchdiag.xref
 
+ABE Activation and Reboot is to be done under a separate role, solaris-pca-abereboot
+
 | Name           | Default Value | Description                        |
 | -------------- | ------------- | -----------------------------------|
 | `solaris_pca_operand` | missingrs | PCA operands to use for patching, see PCA documentation for possible values |
@@ -21,10 +23,7 @@ The schedule settings result in a quarterly refresh of patchdiag.xref
 | `pca_patchdiag_dom_schedule` | '1' | Controls cron job for patchdiag.xref download |
 | `pca_patchdiag_monthly_schedule` | '*/3' | Controls cron job for patchdiag.xref download |
 | `pca_patchdiag_dow_schedule` | '*' | Controls cron job for patchdiag.xref download |
-| `pca_reboot_now` | false | Wether to run the actual ABE activation and reboot commands |
 | `pca_ignorelist` | empty | PCA ignore list, as given in PCA documentation (quote for space separated list |
-
-This is intended to be used in a playbook where first run sets up the ABE, and a second run will need to be run with --extra-vars="pca_reboot_now: true" to perform ABE activation and reboot.
 
 Available tags are:
 
@@ -37,4 +36,3 @@ Available tags are:
 | `check` | Performs space checks on target hosts for ABE install and patch |
 | `deploy` | Copies patches and PCA required files to target hosts |
 | `install` | Creates ABE, installs prereqs and patches ABE |
-| `activate` | activates patched ABE and reboots into it |
