@@ -1,12 +1,12 @@
 ---
 - name: Download required patches from Oracle
-  local_action: shell {{ pca_basedir }}/pca -d {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }} | tail -n1 | awk '{print $5 "\n" $9 }'
+  local_action: shell {{ pca_basedir }}/pca -d {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }} | tail -1 | awk '{print $5 "\n" $9 }'
   register: fetchbundlemain
   changed_when: fetchbundlemain.stdout_lines.0 != '0'
   failed_when: fetchbundlemain.stdout_lines.1 != '0'
 
 - name: Download prereq patches from Oracle
-  local_action: shell {{ pca_basedir }}/pca -d {{ pca_basedir }}/{{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }} | tail -n1 | awk '{print $5 "\n" $9 }'
+  local_action: shell {{ pca_basedir }}/pca -d {{ pca_basedir }}/{{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} -P {{ pca_basedir }}/patches --user={{ mos_user }} --passwd={{ mos_password }} | tail -1 | awk '{print $5 "\n" $9 }'
   register: fetchbundleprereq
   changed_when: fetchbundleprereq.stdout_lines.0 != '0'
   failed_when: fetchbundleprereq.stdout_lines.1 != '0'

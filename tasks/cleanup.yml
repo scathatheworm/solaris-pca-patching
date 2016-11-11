@@ -10,7 +10,7 @@
   when: inactive_bes.stdout_lines|length > 0
 
 - name: Upgrade ZFS pools
-  shell: /usr/sbin/zpool upgrade -a | /usr/bin/tail -n1
+  shell: /usr/sbin/zpool upgrade -a | /usr/bin/tail -1
   register: zpoolupgrade
   changed_when: zpoolupgrade.stdout != 'All pools are formatted using this version.'
 
