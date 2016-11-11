@@ -5,19 +5,19 @@
   changed_when: false
 
 - name: Check there is enough free space in defined tempdir
-  shell: df -b {{ pca_tempdir }} | tail -1 | awk '{print $2}'
+  shell: /usr/bin/df -b {{ pca_tempdir }} | /usr/bin/tail -1 | /usr/bin/awk '{print $2}'
   register: tempspace
-  failed_when: "tempspace.stdout|int <= pca_bundlesize.stdout|int*3"
+  failed_when: "tempspace.stdout|int <= pca_bundlesize.stdout|int*4"
   changed_when: false
 
 - name: Get zones root filesystems to check for space
-  shell: zoneadm list -cvi | grep -v ID | awk '$5=="native" {print $4}'
+  shell: /usr/sbin/zoneadm list -cvi | /usr/bin/grep -v ID | /usr/bin/awk '$5=="native" {print $4}'
   register: zoneroot
   changed_when: false
 
 - name: Check there is enough free space in each zone root FS
-  shell: df -b {{ item }} | tail -1 | awk '{print $2}'
+  shell: /usr/bin/df -b {{ item }} | /usr/bin/tail -1 | /usr/bin/awk '{print $2}'
   register: zonerootspace
-  failed_when: "zonerootspace.stdout|int <= pca_bundlesize.stdout|int*3"
+  failed_when: "zonerootspace.stdout|int <= pca_bundlesize.stdout|int*4"
   with_items: "{{ zoneroot.stdout_lines }}"
   changed_when: false

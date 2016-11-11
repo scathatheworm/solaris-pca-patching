@@ -1,6 +1,6 @@
 ---
 - name: Find inactive BEs
-  shell: /usr/sbin/lustatus | awk '$5 == "yes" { print $1 }'
+  shell: /usr/sbin/lustatus | /usr/bin/awk '$5 == "yes" { print $1 }'
   register: inactive_bes
   changed_when: false
 
@@ -8,3 +8,13 @@
   shell: /usr/sbin/ludelete {{ item }}
   with_items: "{{ inactive_bes.stdout_lines }}"
   when: inactive_bes.stdout_lines|length > 0
+
+- name: Upgrade ZFS pools
+  shell: /usr/sbin/zpool upgrade -a | /usr/bin/tail -n1
+  register: zpoolupgrade
+  changed_when: zpoolupgrade.stdout != 'All pools are formatted using this version.'
+
+- name: Upgrade ZFS filesystems
+  shell: /usr/sbin/zfs upgrade -a | /usr/bin/awk '$3=="upgraded" {print $1}'
+  register: zfsupgrade
+  changed_when: zfsupgrade.stdout != '0'

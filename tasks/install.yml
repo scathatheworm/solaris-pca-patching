@@ -1,6 +1,6 @@
 ---
 - name: get current date for reference as ABE name
-  command: date +%Y%m%d
+  command: /usr/bin/date +%Y%m%d
   register: pca_abe
   changed_when: false
   always_run: true

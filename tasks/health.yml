@@ -1,4 +1,10 @@
 ---
+- name: Get root filesystem pool name
+  shell: /usr/sbin/mount -p | /usr/bin/awk '$3=="/" && $4=="zfs" {print $1}'
+  register: rootpool
+  failed_when: rootpool.stdout is not defined
+  changed_when: false
+
 - name: Check health of all ZFS pools
   shell: /usr/sbin/zpool status -x
   register: zpoolstatus
@@ -6,9 +12,7 @@
   changed_when: false
 
 - name: Check root filesystem for mirror status
-  shell: /usr/sbin/zpool status `echo {{ item.device }} | cut -d/ -f1` | grep ONLINE | wc -l
+  shell: /usr/sbin/zpool status {{ rootpool.stdout }} | /usr/bin/grep ONLINE | /usr/bin/wc -l
   register: zfsrootpool
-  with_items: '{{ ansible_mounts }}'
-  when: item.mount == '/'
   changed_when: false
-  failed_when: item.fstype != 'zfs' or zfsrootpool.stdout|int < 5
+  failed_when: zfsrootpool.stdout|int < 5

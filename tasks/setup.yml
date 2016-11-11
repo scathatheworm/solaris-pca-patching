@@ -37,7 +37,7 @@
 
 - name: Set cronjob for downloading patchdiag.xref on desired schedule
   cron: name='Download patchdiag file from oracle'
-        cron_file=/etc/crontab
+        cron_file=pca-patchdiag-fetch
         user=root
         minute={{ pca_patchdiag_minute_schedule }}
         hour={{ pca_patchdiag_hour_schedule }}
@@ -55,7 +55,7 @@
   run_once: true
 
 - name: Get current date
-  command: date +%Y%m%d
+  command: /usr/bin/date +%Y%m%d
   register: current_date
   changed_when: false
 

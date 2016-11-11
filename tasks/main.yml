@@ -1,13 +1,4 @@
 ---
-- name: Gather facts
-  setup:
-  always_run: true
-  tags: health,setup,cleanup,check,stage,install,activate
-  when:
-  - ansible_os_family == 'Solaris'
-  - ansible_distribution_version == '10'
-  - ansible_container is not defined
-
 - name: Check if there is an ABE pending activation
   command: /usr/bin/grep pending /etc/ansible/facts.d/pca.fact
   changed_when: false
@@ -18,6 +9,14 @@
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'
   - ansible_container is not defined
+
+- include: cleanup.yml
+  when:
+  - ansible_os_family == 'Solaris'
+  - ansible_distribution_version == '10'
+  - ansible_container is not defined
+  - pca_abe_pending.rc != '0'
+  tags: cleanup
 
 - include: health.yml
   when:
@@ -34,14 +33,6 @@
   - ansible_container is not defined
   - pca_abe_pending.rc != '0'
   tags: setup
-
-- include: cleanup.yml
-  when:
-  - ansible_os_family == 'Solaris'
-  - ansible_distribution_version == '10'
-  - ansible_container is not defined
-  - pca_abe_pending.rc != '0'
-  tags: cleanup
 
 - include: stage.yml
   when:
