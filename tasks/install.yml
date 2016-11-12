@@ -1,10 +1,4 @@
 ---
-- name: get current date for reference as ABE name
-  command: /usr/bin/date +%Y%m%d
-  register: pca_abe
-  changed_when: false
-  always_run: true
-
 - name: Copy prereq list
   copy: src={{ pca_prereq }}
         dest={{ pca_tempdir}}/pca_patches/{{ pca_prereq }}
@@ -18,14 +12,29 @@
               backrefs=yes
               line='global{{":"}}installed{{":"}}/'
 
+- name: get current date for reference as ABE name
+  command: /usr/bin/date +%Y%m%d
+  register: pca_abe
+  changed_when: false
+  always_run: true
+
 - name: Create ABE
   shell: /usr/sbin/lucreate -n {{ pca_abe.stdout }}
 
 - name: Mount ABE
   shell: /usr/sbin/lumount {{ pca_abe.stdout }}
 
-- name: Dry Run patch installation to ABE
-  shell: "{{ pca_tempdir }}/pca -I {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}"
+- name: Set solaris upgrade variable if desired
+  set_fact: pca_solaris_upgrade_10u11
+  when:
+  - "'1/13' not in ansible_distribution_release"
+  - pca_try_release_upgrade
+
+- include: upgrade.yml
+  when:
+  - pca_try_release_upgrade
+  - pca_solaris_upgrade_10u11 is defined
+  - pca_solaris_upgrade_10u11
 
 - name: Install patches to ABE
   shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R /.alt.{{ pca_abe.stdout }}"

@@ -1,0 +1,21 @@
+---
+- name: Collect information from target Solaris system for PCA
+  shell: showrev -p {% if pca_solaris_upgrade_10u11 %} -R /.alt.{{ pca_abe.stdout }} {% endif %} > {{ pca_tempdir }}/showrev.out ; pkginfo -x {% if pca_solaris_upgrade_10u11 %} -R /.alt.{{ pca_abe.stdout }} {% endif %} > {{ pca_tempdir }}/pkginfo.out ; uname -a {% if pca_solaris_upgrade_10u11 %} | sed 's/[0-9]\{6\}-[0-9]\{2\}/147147-26/g' {% endif %} > {{ pca_tempdir }}/uname.out
+
+- name: Pull files for PCA analysis
+  fetch: dest={{ pca_basedir }}/{{ inventory_hostname }}/{{ item }}
+         src={{ pca_tempdir }}/{{ item }}
+         fail_on_missing=yes
+         flat=yes
+  with_items:
+  - showrev.out
+  - uname.out
+  - pkginfo.out
+
+- name: Generate patchlist
+  local_action: shell {{ pca_basedir }}/pca -l {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' > {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
+  changed_when: false
+
+- name: Append prereq patchlist
+  local_action: shell {{ pca_basedir }}/pca -l {{ pca_basedir }}/{{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' >> {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
+  changed_when: false

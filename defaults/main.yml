@@ -14,3 +14,4 @@ pca_patchdiag_dom_schedule: '1'
 pca_patchdiag_monthly_schedule: '*/3'
 pca_patchdiag_dow_schedule: '*'
 pca_ignorelist:
+pca_try_release_upgrade: true

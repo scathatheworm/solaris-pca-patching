@@ -79,27 +79,3 @@
         path={{ pca_basedir }}/patchdiag.xref
   delegate_to: localhost
   run_once: true
-
-- name: Collect information from target Solaris system for PCA
-  script: pca_analysis_files.sh
-  register: pca_analysis_files
-  changed_when: pca_analysis_files.rc == 2
-  failed_when: pca_analysis_files.rc == 1
-
-- name: Pull files for PCA analysis
-  fetch: dest={{ pca_basedir }}/{{ inventory_hostname }}/{{ item }}
-         src={{ pca_tempdir }}/{{ item }}
-         fail_on_missing=yes
-         flat=yes
-  with_items:
-  - showrev.out
-  - uname.out
-  - pkginfo.out
-
-- name: Generate patchlist
-  local_action: shell {{ pca_basedir }}/pca -l {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' > {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
-  changed_when: false
-
-- name: Append prereq patchlist
-  local_action: shell {{ pca_basedir }}/pca -l {{ pca_basedir }}/{{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' >> {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
-  changed_when: false

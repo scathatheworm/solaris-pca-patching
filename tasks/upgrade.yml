@@ -1,0 +1,52 @@
+---
+- name: check for space in root filesystem to copy upgrade image
+  shell: /usr/bin/df -b / | /usr/bin/tail -1 | /usr/bin/awk '{print $2}'
+  register: rootspace
+  failed_when: "zonerootspace.stdout|int <= 5242880"
+  changed_when: false
+
+- name: Remove Live Upgrade packages
+  svr4pkg: name={{ item }}
+           state=absent
+  with_items:
+  - SUNWlucfg
+  - SUNWluu
+  - SUNWlur
+
+- name: Synchronize Solaris10u11 to target host
+  synchronize: compress=no
+               archive=yes
+               delete=yes
+               src={{ pca_basedir }}/Solaris_10_0113
+               dest=/Solaris_10_0113
+
+- name: Install Solaris10u11 Live Upgrade packages
+  svr4pkg: name={{ item }}
+           state=absent
+           src=/Solaris_10_0113/Solaris_10/Product
+  with_items:
+  - SUNWlucfg
+  - SUNWluu
+  - SUNWlur
+
+- name: Reapply Live Upgrade packages patch
+  shell: "{{ pca_tempdir }}/pca -i 121430 -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches"
+
+- name: Set autoreg value
+  copy: content="autoreg=disable"
+        dest=/var/tmp/no-autoreg
+        owner=root
+        group=root
+        mode=0644
+
+- name: Upgrade to Solaris10u11
+  shell: /usr/sbin/luupgrade -u -n {{ pca_abe.stdout }} -s /Solaris_10_0113 -k /var/tmp/no-autoreg
+
+- include: analyze.yml
+
+- name: Install prerequisite patches in ABE after 10u11 upgrade
+  shell: "{{ pca_tempdir }}/pca -i {{ pca_tempdir}}/pca_patches/{{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}"
+
+- include: stage.yml
+
+- include: deploy.yml
