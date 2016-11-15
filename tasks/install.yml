@@ -37,7 +37,7 @@
   - pca_solaris_upgrade_10u11
 
 - name: Install patches to ABE
-  shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R /.alt.{{ pca_abe.stdout }}"
+  shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist is defined %} --ignore={{ pca_ignorelist }}{% endif %} -R /.alt.{{ pca_abe.stdout }}"
 
 - name: Update ABE Ramdisk
   shell: /.alt.{{ pca_abe.stdout }}/boot/solaris/bin/create_ramdisk -R /.alt.{{ pca_abe.stdout }}
@@ -51,7 +51,6 @@
   - showrev.out
   - pkginfo.out
   - uname.out
-  - patchdiag.xref
 
 - name: Cleanup pushed patch repo
   file: path={{ pca_tempdir }}/{{ item }}

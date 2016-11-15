@@ -1,6 +1,7 @@
 ---
 - name: Get Patch Bundle Size
-  local_action: shell bundlesize=0 ; for i in `cat {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out` ; do du -sk {{ pca_basedir }}/patches/$i ; done | awk '{ sum +=$1 } END {print sum}'
+  shell: for i in `cat {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out` ; do du -sk {{ pca_basedir }}/patches/$i ; done | awk '{ sum +=$1 } END {print sum}'
+  delegate_to: localhost
   register: pca_bundlesize
   changed_when: false
 
