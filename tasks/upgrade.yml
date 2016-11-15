@@ -2,7 +2,7 @@
 - name: check for space in root filesystem to copy upgrade image
   shell: /usr/bin/df -b / | /usr/bin/tail -1 | /usr/bin/awk '{print $2}'
   register: rootspace
-  failed_when: "zonerootspace.stdout|int <= 5242880"
+  failed_when: "rootspace.stdout|int <= 5242880"
   changed_when: false
 
 - name: Remove Live Upgrade packages

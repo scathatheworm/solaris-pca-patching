@@ -1,6 +1,8 @@
 ---
 - name: Get root filesystem pool name
-  shell: /usr/sbin/mount -p | /usr/bin/awk '$3=="/" && $4=="zfs" {print $1}'
+  shell: /usr/sbin/mount -p | /usr/bin/awk '$3=="/" && $4=="zfs" {print $1}' |  | /usr/bin/awk -F/ '{print $1}'
+  args:
+    warn: no
   register: rootpool
   failed_when: rootpool.stdout is not defined
   changed_when: false
