@@ -4,17 +4,3 @@
                dest={{ pca_tempdir }}/pca_patches
                compress=no
                rsync_opts="--files-from={{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out"
-
-- name: Upload PCA script
-  copy: src={{ pca_basedir }}/pca
-        dest={{ pca_tempdir }}/pca
-        owner=root
-        group=root
-        mode=0755
-
-- name: Upload patchdiag.xref
-  copy: src={{ pca_basedir }}/patchdiag.xref
-        dest={{ pca_tempdir }}/pca_patches/patchdiag.xref
-        owner=root
-        group=root
-        mode=0644

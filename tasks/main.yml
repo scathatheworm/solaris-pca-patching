@@ -2,9 +2,9 @@
 - name: Check if there is an ABE pending activation
   command: /usr/bin/grep pending /etc/ansible/facts.d/pca.fact
   changed_when: false
-  failed_when: false
+  failed_when: pca_abe_pending.rc == 0
   register: pca_abe_pending
-  tags: health,setup,cleanup,check,stage,install,activate
+  tags: health,setup,cleanup,analyze,check,stage,install,activate
   when:
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'

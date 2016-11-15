@@ -15,3 +15,4 @@ pca_patchdiag_monthly_schedule: '*/3'
 pca_patchdiag_dow_schedule: '*'
 pca_ignorelist:
 pca_try_release_upgrade: true
+pca_parallel_patch_routines: 10

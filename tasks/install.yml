@@ -63,6 +63,10 @@
   - uname.out
   - patchdiag.xref
 
+- name: Remove pca local fact from ABE
+  file: state=absent
+        path=/.alt.{{ pca_abe.stdout }}/etc/ansible/facts.d/pca.fact
+
 - name: Umount ABE
   shell: /usr/sbin/luumount {{ pca_abe.stdout }}
 
