@@ -45,7 +45,7 @@
 - include: analyze.yml
 
 - name: Install prerequisite patches in ABE after 10u11 upgrade
-  shell: "{{ pca_tempdir }}/pca -i {{ pca_tempdir}}/pca_patches/{{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R /.alt.{{ pca_abe.stdout }}"
+  shell: "{{ pca_tempdir }}/pca -i {{ pca_tempdir}}/pca_patches/{{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R {{ pca_abe_mountpoint.stdout }}"
 
 - include: stage.yml
 
