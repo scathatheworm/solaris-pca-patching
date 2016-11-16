@@ -26,7 +26,7 @@
   register: pca_abe_mountpoint
 
 - name: Set solaris upgrade variable if desired
-  set_fact: pca_solaris_upgrade_10u11
+  set_fact: pca_solaris_upgrade_10u11=true
   when:
   - "'1/13' not in ansible_distribution_release"
   - pca_try_release_upgrade
@@ -38,7 +38,7 @@
   - pca_solaris_upgrade_10u11
 
 - name: Install patches to ABE
-  shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist is defined %} --ignore={{ pca_ignorelist }}{% endif %} -R {{ pca_abe_mountpoint.stdout }}"
+  shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R {{ pca_abe_mountpoint.stdout }}"
   register: pca_patch_abe
   failed_when: pca_patch_abe.rc == 1 or pca_patch_abe.rc == 2
 
