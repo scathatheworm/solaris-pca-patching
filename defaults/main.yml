@@ -16,3 +16,6 @@ pca_patchdiag_dow_schedule: '*'
 pca_ignorelist:
 pca_try_release_upgrade: true
 pca_parallel_patch_routines: 10
+pca_send_email: false
+pca_source_address:
+pca_destination_address:

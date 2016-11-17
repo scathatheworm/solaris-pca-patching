@@ -87,6 +87,7 @@
 - name: Setup target host working directory
   file: path={{ pca_tempdir }}/pca_patches
         state=directory
+        owner={{ ansible_user_id }}
 
 - name: Upload PCA script
   copy: src={{ pca_basedir }}/pca

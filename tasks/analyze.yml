@@ -17,6 +17,17 @@
   local_action: shell {{ pca_basedir }}/pca -l {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' > {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
   changed_when: false
 
+- name: Generate HTML report of patches to be applied
+  local_action: shell {{ pca_basedir }}/pca -L {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} > {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.html
+  when:
+  - pca_solaris_upgrade_10u11 is not defined
+
+- name: Email report
+  local_action: shell ( echo -e 'To{{":"}} {{ pca_destination_address }}\nFrom{{":"}} {{ pca_source_address }}\nContent-Type{{":"}} text/html\nMIME-Version{{":"}} 1.0\nSubject{{":"}} Solaris Patch Analysis report - {{ inventory_hostname }}\n' ; cat {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.html ) | /usr/sbin/sendmail -t
+  when:
+  - pca_send_email
+  - pca_solaris_upgrade_10u11 is not defined
+
 - name: Append prereq patchlist
   local_action: shell {{ pca_basedir }}/pca -l {{ pca_basedir }}/{{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' >> {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
   changed_when: false

@@ -13,10 +13,10 @@
   - SUNWluu
   - SUNWlur
 
-- name: Setup target dir for storing install iamge
+- name: Setup target dir for storing install image
   file: path=/Solaris_10_0113
         state=directory
-        mode=0777
+        owner={{ ansible_user_id }}
 
 - name: Synchronize Solaris10u11 install image to target host
   synchronize: compress=no
@@ -27,7 +27,7 @@
 
 - name: Install Solaris10u11 Live Upgrade packages
   svr4pkg: name={{ item }}
-           state=absent
+           state=present
            src=/Solaris_10_0113/Solaris_10/Product
   with_items:
   - SUNWlucfg
