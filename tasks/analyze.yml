@@ -23,7 +23,10 @@
   - pca_solaris_upgrade_10u11 is not defined
 
 - name: Email report
-  local_action: shell ( echo -e 'To{{":"}} {{ pca_destination_address }}\nFrom{{":"}} {{ pca_source_address }}\nContent-Type{{":"}} text/html\nMIME-Version{{":"}} 1.0\nSubject{{":"}} Solaris Patch Analysis report - {{ inventory_hostname }}\n' ; cat {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.html ) | /usr/sbin/sendmail -t
+  shell: ( echo -e 'To{{":"}} {{ pca_destination_address }}'; echo 'From{{":"}} {{ pca_source_address }}'; echo 'Content-Type{{":"}} text/html'; echo 'MIME-Version{{":"}} 1.0'; echo 'Subject{{":"}} Solaris Patch Analysis report - {{ inventory_hostname }}'; echo; cat {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.html ) | /usr/sbin/sendmail -t
+  args:
+    executable: /bin/bash
+  delegate_to: localhost
   when:
   - pca_send_email
   - pca_solaris_upgrade_10u11 is not defined

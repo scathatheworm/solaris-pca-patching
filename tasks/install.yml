@@ -16,14 +16,9 @@
   command: /usr/bin/date +%Y%m%d
   register: pca_abe
   changed_when: false
-  always_run: true
 
 - name: Create ABE
   shell: /usr/sbin/lucreate -n {{ pca_abe.stdout }}
-
-- name: Mount ABE
-  shell: /usr/sbin/lumount {{ pca_abe.stdout }}
-  register: pca_abe_mountpoint
 
 - name: Set solaris upgrade variable if desired
   set_fact: pca_solaris_upgrade_10u11=true
@@ -36,6 +31,10 @@
   - pca_try_release_upgrade
   - pca_solaris_upgrade_10u11 is defined
   - pca_solaris_upgrade_10u11
+
+- name: Mount ABE
+  shell: /usr/sbin/lumount {{ pca_abe.stdout }}
+  register: pca_abe_mountpoint
 
 - name: Install patches to ABE
   shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R {{ pca_abe_mountpoint.stdout }}"

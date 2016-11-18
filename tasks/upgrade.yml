@@ -5,14 +5,6 @@
   failed_when: "rootspace.stdout|int <= 5242880"
   changed_when: false
 
-- name: Remove Live Upgrade packages
-  svr4pkg: name={{ item }}
-           state=absent
-  with_items:
-  - SUNWlucfg
-  - SUNWluu
-  - SUNWlur
-
 - name: Setup target dir for storing install image
   file: path=/Solaris_10_0113
         state=directory
@@ -21,9 +13,17 @@
 - name: Synchronize Solaris10u11 install image to target host
   synchronize: compress=no
                archive=yes
-               delete=yes
-               src={{ pca_basedir }}/Solaris_10_0113
+               owner={{ ansible_user_id }}
+               src={{ pca_basedir }}/Solaris_10_0113/
                dest=/Solaris_10_0113/
+
+- name: Remove Live Upgrade packages
+  svr4pkg: name={{ item }}
+           state=absent
+  with_items:
+  - SUNWlucfg
+  - SUNWluu
+  - SUNWlur
 
 - name: Install Solaris10u11 Live Upgrade packages
   svr4pkg: name={{ item }}
