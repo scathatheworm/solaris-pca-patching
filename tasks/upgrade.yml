@@ -1,5 +1,5 @@
 ---
-- name: check for space in root filesystem to copy upgrade image
+- name: check for space in temp filesystem to copy upgrade image
   shell: /usr/bin/df -b {{ pca_tempdir }} | /usr/bin/tail -1 | /usr/bin/awk '{print $2}'
   register: tempspace
   failed_when: "tempspace.stdout|int <= 3145728"
@@ -8,7 +8,6 @@
 - name: Synchronize Solaris10u11 install image to target host
   synchronize: compress=no
                archive=yes
-               owner={{ ansible_user_id }}
                src={{ pca_basedir }}/Solaris_10_0113/
                dest={{ pca_tempdir }}/Solaris_10_0113
 
