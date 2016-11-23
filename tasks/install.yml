@@ -17,9 +17,6 @@
   register: pca_abe
   changed_when: false
 
-- name: Create ABE
-  shell: /usr/sbin/lucreate -n {{ pca_abe.stdout }}
-
 - name: Set solaris upgrade variable if desired
   set_fact: pca_solaris_upgrade_10u11=true
   when:
@@ -31,6 +28,10 @@
   - pca_try_release_upgrade
   - pca_solaris_upgrade_10u11 is defined
   - pca_solaris_upgrade_10u11
+
+- name: Create ABE
+  shell: /usr/sbin/lucreate -n {{ pca_abe.stdout }}
+  when: pca_solaris_upgrade_10u11 is not defined
 
 - name: Mount ABE
   shell: /usr/sbin/lumount {{ pca_abe.stdout }}
@@ -76,6 +77,7 @@
   - showrev.out
   - pkginfo.out
   - uname.out
+  - Solaris_10_0113
 
 - name: Cleanup pushed patch repo
   file: path={{ pca_tempdir }}/{{ item }}
@@ -86,7 +88,7 @@
   - showrev.out
   - pkginfo.out
   - uname.out
-  - patchdiag.xref
+  - Solaris_10_0113
 
 - name: Remove pca local fact from ABE
   file: state=absent

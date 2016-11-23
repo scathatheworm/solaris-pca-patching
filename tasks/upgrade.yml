@@ -38,6 +38,9 @@
         group=root
         mode=0644
 
+- name: Create ABE
+  shell: /usr/sbin/lucreate -n {{ pca_abe.stdout }}
+
 - name: Upgrade to Solaris10u11
   shell: "( ( nohup /usr/sbin/luupgrade -u -n {{ pca_abe.stdout }} -s {{ pca_tempdir }}/Solaris_10_0113 -k /var/tmp/no-autoreg > {{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log 2>&1& ) & )"
   args:
@@ -66,14 +69,10 @@
   when:
   - pca_send_email
 
-- name: Cleanup Solaris10u11 install image
-  file: path=/Solaris_10_0113
-        state=absent
-
 - include: analyze.yml
 
 - name: Install prerequisite patches in ABE after 10u11 upgrade
-  shell: "{{ pca_tempdir }}/pca -i {{ pca_tempdir}}/pca_patches/{{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R {{ pca_abe_mountpoint.stdout }}"
+  shell: "{{ pca_tempdir }}/pca -i {{ pca_tempdir}}/pca_patches/{{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R {{ pca_abe_mountpoint.stdout }} | grep 'Install Summary'"
 
 - include: stage.yml
 
