@@ -48,6 +48,7 @@
             search_regex='^Install Summary.*total.*successful.*skipped.*failed$'
             state=present
             connect_timeout=60
+            timeout=86400
 
 - name: Get Installation log
   fetch: src={{ pca_tempdir }}/pca_patches/pca.log

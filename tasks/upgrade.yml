@@ -45,11 +45,12 @@
     chdir: "{{ pca_tempdir }}/pca_patches"
     creates: sol10u11_upgrade.log
 
-- name: Wait for patch installation to complete
+- name: Wait for Upgrade to complete
   wait_for: path={{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log
             search_regex='^Failsafe install is complete.*$'
             state=present
             connect_timeout=60
+            timeout=86400
 
 - name: Get Upgrade log
   fetch: src={{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log
