@@ -37,9 +37,31 @@
   register: pca_abe_mountpoint
 
 - name: Install patches to ABE
-  shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R {{ pca_abe_mountpoint.stdout }}"
-  register: pca_patch_abe
-  failed_when: pca_patch_abe.rc == 1 or pca_patch_abe.rc == 2
+  shell: "( ( nohup {{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R {{ pca_abe_mountpoint.stdout }} > {{ pca_tempdir }}/pca_patches/pca.log 2>&1& ) & )"
+  args:
+    executable: /usr/bin/bash
+    chdir: "{{ pca_tempdir }}/pca_patches"
+    creates: pca.log
+
+- name: Wait for patch installation to complete
+  wait_for: path={{ pca_tempdir }}/pca_patches/pca.log
+            search_regex='^Install Summary.*total.*successful.*skipped.*failed$'
+            state=present
+            connect_timeout=60
+
+- name: Get Installation log
+  fetch: src={{ pca_tempdir }}/pca_patches/pca.log
+         dest={{ pca_basedir }}}/{{ inventory_hostname }}/{{ inventory_hostname }}_pca.log
+         flat=yes
+         fail_on_missing=yes
+
+- name: Email installation report
+  shell: ( echo 'To{{":"}} {{ pca_destination_address }}'; echo 'From{{":"}} {{ pca_source_address }}'; echo 'Content-Type{{":"}} text/html'; echo 'MIME-Version{{":"}} 1.0'; echo 'Subject{{":"}} Solaris Patch Installation report - {{ inventory_hostname }}'; echo; cat {{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_pca.log ) | /usr/sbin/sendmail -t
+  args:
+    executable: /bin/bash
+  delegate_to: localhost
+  when:
+  - pca_send_email
 
 - name: Update ABE Ramdisk
   shell: "{{ pca_abe_mountpoint }}/boot/solaris/bin/create_ramdisk -R {{ pca_abe_mountpoint.stdout }}"

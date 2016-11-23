@@ -8,7 +8,7 @@
 - name: Check there is enough free space in defined tempdir
   shell: /usr/bin/df -b {{ pca_tempdir }} | /usr/bin/tail -1 | /usr/bin/awk '{print $2}'
   register: tempspace
-  failed_when: "tempspace.stdout|int <= pca_bundlesize.stdout|int*4"
+  failed_when: "tempspace.stdout|int <= pca_bundlesize.stdout|int*2"
   changed_when: false
 
 - name: Get zones root filesystems to check for space

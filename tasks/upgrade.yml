@@ -1,21 +1,16 @@
 ---
 - name: check for space in root filesystem to copy upgrade image
-  shell: /usr/bin/df -b / | /usr/bin/tail -1 | /usr/bin/awk '{print $2}'
-  register: rootspace
-  failed_when: "rootspace.stdout|int <= 5242880"
+  shell: /usr/bin/df -b {{ pca_tempdir }} | /usr/bin/tail -1 | /usr/bin/awk '{print $2}'
+  register: tempspace
+  failed_when: "tempspace.stdout|int <= 3145728"
   changed_when: false
-
-- name: Setup target dir for storing install image
-  file: path=/Solaris_10_0113
-        state=directory
-        owner={{ ansible_user_id }}
 
 - name: Synchronize Solaris10u11 install image to target host
   synchronize: compress=no
                archive=yes
                owner={{ ansible_user_id }}
                src={{ pca_basedir }}/Solaris_10_0113/
-               dest=/Solaris_10_0113/
+               dest={{ pca_tempdir }}/Solaris_10_0113
 
 - name: Remove Live Upgrade packages
   svr4pkg: name={{ item }}
@@ -28,7 +23,7 @@
 - name: Install Solaris10u11 Live Upgrade packages
   svr4pkg: name={{ item }}
            state=present
-           src=/Solaris_10_0113/Solaris_10/Product
+           src={{ pca_tempdir}}/Solaris_10_0113/Solaris_10/Product
   with_items:
   - SUNWlucfg
   - SUNWluu
@@ -45,7 +40,31 @@
         mode=0644
 
 - name: Upgrade to Solaris10u11
-  shell: /usr/sbin/luupgrade -u -n {{ pca_abe.stdout }} -s /Solaris_10_0113 -k /var/tmp/no-autoreg
+  shell: "( ( nohup /usr/sbin/luupgrade -u -n {{ pca_abe.stdout }} -s {{ pca_tempdir }}/Solaris_10_0113 -k /var/tmp/no-autoreg > {{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log 2>&1& ) & )"
+  args:
+    executable: /usr/bin/bash
+    chdir: "{{ pca_tempdir }}/pca_patches"
+    creates: sol10u11_upgrade.log
+
+- name: Wait for patch installation to complete
+  wait_for: path={{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log
+            search_regex='^Failsafe install is complete.*$'
+            state=present
+            connect_timeout=60
+
+- name: Get Upgrade log
+  fetch: src={{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log
+         dest={{ pca_basedir }}}/{{ inventory_hostname }}/{{ inventory_hostname }}_sol10u11_upgrade.log
+         flat=yes
+         fail_on_missing=yes
+
+- name: Email upgrade report
+  shell: ( echo 'To{{":"}} {{ pca_destination_address }}'; echo 'From{{":"}} {{ pca_source_address }}'; echo 'Content-Type{{":"}} text/html'; echo 'MIME-Version{{":"}} 1.0'; echo 'Subject{{":"}} Solaris Patch Installation report - {{ inventory_hostname }}'; echo; cat {{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_sol10u11_upgrade.log ) | /usr/sbin/sendmail -t
+  args:
+    executable: /bin/bash
+  delegate_to: localhost
+  when:
+  - pca_send_email
 
 - name: Cleanup Solaris10u11 install image
   file: path=/Solaris_10_0113
