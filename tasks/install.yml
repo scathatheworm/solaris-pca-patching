@@ -35,10 +35,10 @@
 
 - name: Mount ABE
   shell: /usr/sbin/lumount {{ pca_abe.stdout }}
-  register: pca_abe_mountpoint
+  when: pca_solaris_upgrade_10u11 is not defined
 
 - name: Install patches to ABE
-  shell: "( ( nohup {{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R {{ pca_abe_mountpoint.stdout }} > {{ pca_tempdir }}/pca_patches/pca.log 2>&1& ) & )"
+  shell: "( ( nohup {{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R /.alt.{{ pca_abe.stdout }} > {{ pca_tempdir }}/pca_patches/pca.log 2>&1& ) & )"
   args:
     executable: /usr/bin/bash
     chdir: "{{ pca_tempdir }}/pca_patches"
@@ -53,7 +53,7 @@
 
 - name: Get Installation log
   fetch: src={{ pca_tempdir }}/pca_patches/pca.log
-         dest={{ pca_basedir }}}/{{ inventory_hostname }}/{{ inventory_hostname }}_pca.log
+         dest={{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_pca.log
          flat=yes
          fail_on_missing=yes
 
@@ -66,10 +66,10 @@
   - pca_send_email
 
 - name: Update ABE Ramdisk
-  shell: "{{ pca_abe_mountpoint }}/boot/solaris/bin/create_ramdisk -R {{ pca_abe_mountpoint.stdout }}"
+  shell: "/.alt.{{ pca_abe.stdout }}/boot/solaris/bin/create_ramdisk -R /.alt.{{ pca_abe.stdout }}"
 
 - name: Cleanup ABE pushed patch repo
-  file: path={{ pca_abe_mountpoint.stdout }}{{ pca_tempdir }}/{{ item }}
+  file: path=/.alt.{{ pca_abe.stdout }}{{ pca_tempdir }}/{{ item }}
         state=absent
   with_items:
   - pca_patches
@@ -92,7 +92,7 @@
 
 - name: Remove pca local fact from ABE
   file: state=absent
-        path={{ pca_abe_mountpoint.stdout }}/etc/ansible/facts.d/pca.fact
+        path=/.alt.{{ pca_abe.stdout }}/etc/ansible/facts.d/pca.fact
 
 - name: Umount ABE
   shell: /usr/sbin/luumount {{ pca_abe.stdout }}

@@ -57,7 +57,7 @@
 
 - name: Get Upgrade log
   fetch: src={{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log
-         dest={{ pca_basedir }}}/{{ inventory_hostname }}/{{ inventory_hostname }}_sol10u11_upgrade.log
+         dest={{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_sol10u11_upgrade.log
          flat=yes
          fail_on_missing=yes
 
@@ -69,10 +69,13 @@
   when:
   - pca_send_email
 
-- include: analyze.yml
+- name: Pause for 5 minutes to let Live Upgrade cleanup
+  pause: minutes=5
 
-- name: Install prerequisite patches in ABE after 10u11 upgrade
-  shell: "{{ pca_tempdir }}/pca -i {{ pca_tempdir}}/pca_patches/{{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches -R {{ pca_abe_mountpoint.stdout }} | grep 'Install Summary'"
+- name: Mount ABE for analysis
+  shell: /usr/sbin/lumount {{ pca_abe.stdout }}
+
+- include: analyze.yml
 
 - include: stage.yml
 
