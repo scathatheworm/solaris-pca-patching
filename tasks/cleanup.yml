@@ -1,4 +1,28 @@
 ---
+- name: Find which is latest available LU packages patch in PCA repo
+  shell: ls -1t 121430* | tail -1 | awk -F. '{print $1}'
+  args:
+    chdir: "{{ pca_basedir }}/patches"
+  delegate_to: localhost
+  register: lu_patch
+  changed_when: false
+  failed_when: "'121430' not in lu_patch.stdout"
+
+- name: Check LU packages patch level
+  shell: /usr/bin/showrev -p | /usr/bin/grep {{ lu_patch.stdout }}
+  changed_when: false
+  failed_when: false
+  register: lu_patch_level
+
+- name: Uncompress LU packages patch
+  unarchive: src={{ pca_basedir }}/patches/{{ lu_patch.stdout }}.zip
+             dest={{ pca_tempdir }}/pca_patches
+  when: lu_patch_level.rc|int == 1
+
+- name: Apply latest LU packages patch
+  shell: /usr/sbin/patchadd -M {{ pca_tempdir }}/pca_patches {{ lu_patch.stdout }}
+  when: lu_patch_level.rc|int == 1
+
 - name: Find inactive BEs
   shell: /usr/sbin/lustatus | /usr/bin/awk '$5 == "yes" { print $1 }'
   register: inactive_bes

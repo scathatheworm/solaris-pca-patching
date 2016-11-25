@@ -1,4 +1,14 @@
 ---
+- name: Check server has ZFS root
+  shell: /usr/sbin/df -n /
+  register: dfroot
+  failed_when: "'zfs' not in dfroot.stdout"
+  changed_when: false
+
+- name: Check server has Live Upgrade properly initialized
+  shell: /usr/sbin/lucurr
+  changed_when: false
+
 - name: Check if there is an ABE pending activation
   command: /usr/bin/grep pending /etc/ansible/facts.d/pca.fact
   changed_when: false
@@ -9,22 +19,6 @@
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'
   - ansible_container is not defined
-
-- include: cleanup.yml
-  when:
-  - ansible_os_family == 'Solaris'
-  - ansible_distribution_version == '10'
-  - ansible_container is not defined
-  - pca_abe_pending.rc != '0'
-  tags: cleanup
-
-- include: health.yml
-  when:
-  - ansible_os_family == 'Solaris'
-  - ansible_distribution_version == '10'
-  - ansible_container is not defined
-  - pca_abe_pending.rc != '0'
-  tags: health
 
 - include: setup.yml
   when:
@@ -49,6 +43,22 @@
   - ansible_container is not defined
   - pca_abe_pending.rc != '0'
   tags: stage
+
+- include: cleanup.yml
+  when:
+  - ansible_os_family == 'Solaris'
+  - ansible_distribution_version == '10'
+  - ansible_container is not defined
+  - pca_abe_pending.rc != '0'
+  tags: cleanup
+
+- include: health.yml
+  when:
+  - ansible_os_family == 'Solaris'
+  - ansible_distribution_version == '10'
+  - ansible_container is not defined
+  - pca_abe_pending.rc != '0'
+  tags: health
 
 - include: check.yml
   when:
