@@ -61,14 +61,6 @@
          flat=yes
          fail_on_missing=yes
 
-- name: Email upgrade report
-  shell: ( echo 'To{{":"}} {{ pca_destination_address }}'; echo 'From{{":"}} {{ pca_source_address }}'; echo 'Content-Type{{":"}} text/html'; echo 'MIME-Version{{":"}} 1.0'; echo 'Subject{{":"}} Solaris Patch Installation report - {{ inventory_hostname }}'; echo; cat {{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_sol10u11_upgrade.log ) | /usr/sbin/sendmail -t
-  args:
-    executable: /bin/bash
-  delegate_to: localhost
-  when:
-  - pca_send_email
-
 - name: Pause for 5 minutes to let Live Upgrade cleanup
   pause: minutes=5
 
