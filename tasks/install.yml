@@ -58,7 +58,7 @@
          fail_on_missing=yes
 
 - name: Email installation report
-  shell: ( echo 'To{{":"}} {{ pca_destination_address }}'; echo 'From{{":"}} {{ pca_source_address }}'; echo 'Content-Type{{":"}} text/html'; echo 'MIME-Version{{":"}} 1.0'; echo 'Subject{{":"}} Solaris Patch Installation report - {{ inventory_hostname }}'; echo; cat {{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_pca.log ) | /usr/sbin/sendmail -t
+  shell: ( echo 'To{{":"}} {{ pca_destination_address }}'; echo 'From{{":"}} {{ pca_source_address }}'; echo 'Content-Type{{":"}} multipart/mixed; boundary=mailboundary'; echo 'MIME-Version{{":"}} 1.0'; echo 'Subject{{":"}} Solaris Patch Installation report - {{ inventory_hostname }}'; echo ; echo '--mailboundary' ; echo 'Content-Type{{":"}} text/plain; charset=us-ascii' ; echo 'Content-Disposition{{":"}} attachment; filename={{ inventory_hostname }}_pca.log' ; cat {{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_pca.log {% if pca_solaris_upgrade_10u11 is defined and pca_solaris_upgrade_10u11 %} ; echo ; echo '--mailboundary' ; echo 'Content-Type{{":"}} text/plain; charset=us-ascii' ; echo 'Content-Disposition{{":"}} attachment; filename={{ inventory_hostname }}_sol10u11_upgrade.log' ; cat {{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_sol10u11_upgrade.log {% endif %} ) | /usr/sbin/sendmail -t
   args:
     executable: /bin/bash
   delegate_to: localhost
