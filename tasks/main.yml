@@ -1,13 +1,21 @@
 ---
+
+# Fail there is no ZFS root
+
 - name: Check server has ZFS root
   shell: /usr/sbin/df -n /
   register: dfroot
   failed_when: "'zfs' not in dfroot.stdout"
   changed_when: false
 
+# Fail if Live Upgrade is not already configured and working
+
 - name: Check server has Live Upgrade properly initialized
   shell: /usr/sbin/lucurr
   changed_when: false
+
+# Check for an ABE already patched with this role
+# fail if there is one already
 
 - name: Check if there is an ABE pending activation
   command: /usr/bin/grep pending /etc/ansible/facts.d/pca.fact
@@ -19,6 +27,8 @@
   - ansible_os_family == 'Solaris'
   - ansible_distribution_version == '10'
   - ansible_container is not defined
+
+# All tags below call for each subset of the role tasks
 
 - include: setup.yml
   when:

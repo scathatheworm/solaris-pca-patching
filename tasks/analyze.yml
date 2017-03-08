@@ -1,4 +1,16 @@
 ---
+# This section consists of those tasks that will result in Patch Cech Advance
+# analysis of the target host
+
+
+# First task will collect remote host information:
+# showrev -p
+# uname -a
+# pkginfo -x
+# Since this set of tasks is called again if server is upgraded to Sol10u11
+# it will detect the stored variable and analyze the upgraded ABE if it is
+# present
+
 - name: Collect information from target Solaris system for PCA
   shell: showrev -p {% if pca_solaris_upgrade_10u11 is defined and pca_solaris_upgrade_10u11 %} -R /.alt.{{ pca_abe.stdout }} {% endif %} > {{ pca_tempdir }}/showrev.out ; pkginfo -x {% if pca_solaris_upgrade_10u11 is defined and pca_solaris_upgrade_10u11 %} -R /.alt.{{ pca_abe.stdout }} {% endif %} > {{ pca_tempdir }}/pkginfo.out ; uname -a {% if pca_solaris_upgrade_10u11 is defined and pca_solaris_upgrade_10u11 %} | sed 's/[0-9]\{6\}-[0-9]\{2\}/147147-26/g' {% endif %} > {{ pca_tempdir }}/uname.out
   changed_when: false
@@ -13,6 +25,9 @@
   - uname.out
   - pkginfo.out
 
+# Second task is to generate a patch list to latest download those patches in
+# the control server
+
 - name: Generate patchlist
   local_action: shell {{ pca_basedir }}/pca -l {{ solaris_pca_operand }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' > {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out
   changed_when: false
@@ -22,6 +37,9 @@
   when:
   - pca_solaris_upgrade_10u11 is not defined
 
+# Third task will generate a prety printed HTML report and optionally email it
+# this doesn't run if it's doing analysis on upgraded release ABE
+
 - name: Email report
   shell: ( echo 'To{{":"}} {{ pca_destination_address }}'; echo 'From{{":"}} {{ pca_source_address }}'; echo 'Content-Type{{":"}} text/html;'; echo 'MIME-Version{{":"}} 1.0'; echo 'Subject{{":"}} Solaris Patch Analysis report - {{ inventory_hostname }}'; echo; cat {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.html ) | /usr/sbin/sendmail -t
   args:
@@ -30,6 +48,8 @@
   when:
   - pca_send_email
   - pca_solaris_upgrade_10u11 is not defined
+
+# Last, the prereq patch list is appended to the host patchlist 
 
 - name: Append prereq patchlist
   local_action: shell {{ pca_basedir }}/pca -l {{ pca_basedir }}/{{ pca_prereq }} -y -X {{ pca_basedir }} -f {{ pca_basedir }}/{{ inventory_hostname }} | egrep '^1' | awk '{ print $1 "-" $4 ".zip" }' >> {{ pca_basedir }}/{{ inventory_hostname }}/patchlist.out

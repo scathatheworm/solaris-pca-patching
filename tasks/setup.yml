@@ -1,4 +1,8 @@
 ---
+
+# The two tasks below configure directiories to be used in the control host
+# the first one sets the repo dir, the second creates a staging place for each host
+
 - name: Setup PCA patch dir repository
   file: path={{ pca_basedir }}/patches
         state=directory
@@ -8,14 +12,19 @@
 - name: Setup working directory
   file: path={{ pca_basedir }}/{{ inventory_hostname }}
         state=directory
-        mode=0777
+        mode=0775
   delegate_to: localhost
+
+# This will place the prereq patchlist in the working directory of the
+# control host
 
 - name: Place prereq file in global workdir
   copy: src={{ pca_prereq }}
         dest={{ pca_basedir }}/{{ pca_prereq }}
   delegate_to: localhost
   run_once: true
+
+# Download pca script, control with checksum
 
 - name: Get PCA script
   get_url: 
@@ -29,12 +38,16 @@
   run_once: true
   when: pca_downloadfirst
 
+# Get PCA to update itself
+
 - name: Update PCA
   shell: "{{ pca_basedir }}/pca --update now"
   delegate_to: localhost
   register: updatepca
   changed_when: updatepca.stdout != 'No new version available'
   run_once: true
+
+# Set a cron job for downloading the cross reference file on a schedule
 
 - name: Set cronjob for downloading patchdiag.xref on desired schedule
   cron: name='Download patchdiag file from oracle'
@@ -49,12 +62,17 @@
   delegate_to: localhost
   run_once: true
 
+# Find the latest of the cross reference files to link for usage later
+
 - name: Get which is the latest available patchdiag file
   shell: find {{pca_basedir }} -name patchdiag.xref.20[1-2][0-9][0-1][0-9][0-3][0-9] -exec ls -1t '{}' \;| head -n1 | wc -l
   delegate_to: localhost
   register: latest_patchdiag
   changed_when: false
   run_once: true
+
+# Get the date to timestamp the download of the cross reference file
+# in case none is present
 
 - name: Get current date
   command: /usr/bin/date +%Y%m%d
@@ -70,6 +88,8 @@
   run_once: true
   when: latest_patchdiag.stdout|int == 0
 
+# Store the cross reference file name in a variable for linking below
+
 - name: Set patchdiag target file variable
   shell: ls -t `find /var/pca -name patchdiag.xref.20[1-2][0-9][0-1][0-9][0-3][0-9]` 2>/dev/null | head -1
   delegate_to: localhost
@@ -84,10 +104,14 @@
   delegate_to: localhost
   run_once: true
 
+# Set working dir in target host
+
 - name: Setup target host working directory
   file: path={{ pca_tempdir }}/pca_patches
         state=directory
         owner={{ ansible_user_id }}
+
+# Upload script and cross reference file
 
 - name: Upload PCA script
   copy: src={{ pca_basedir }}/pca
@@ -102,6 +126,9 @@
         owner=root
         group=root
         mode=0644
+
+# Configure parallel patching, very useful to speed up process when working
+# with zones
 
 - name: Set desired parallel patching value
   lineinfile: dest=/etc/patch/pdo.conf

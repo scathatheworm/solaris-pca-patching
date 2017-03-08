@@ -1,4 +1,7 @@
 ---
+
+# Search for the root filesystem zfs pool name
+
 - name: Get root filesystem pool name
   shell: /usr/sbin/mount -p | /usr/bin/awk '$3=="/" && $4=="zfs" {print $1}' | /usr/bin/awk -F/ '{print $1}'
   args:
@@ -7,11 +10,17 @@
   failed_when: rootpool.stdout is not defined
   changed_when: false
 
+# Run a check of all pools to determine health
+# Any unhealthy pool will fail and stop the playbook run
+
 - name: Check health of all ZFS pools
   shell: /usr/sbin/zpool status -x
   register: zpoolstatus
   failed_when: zpoolstatus.stdout != 'all pools are healthy'
   changed_when: false
+
+# Search for a valid mirror configuration of the root pool
+# if one is not found, this task will fail and stop the playbook run
 
 - name: Check root filesystem for mirror status
   shell: /usr/sbin/zpool status {{ rootpool.stdout }} | /usr/bin/grep ONLINE | /usr/bin/wc -l

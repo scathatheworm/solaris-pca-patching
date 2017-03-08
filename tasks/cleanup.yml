@@ -1,4 +1,9 @@
 ---
+
+# The Live Upgrade patch affects how well Live Upgrade will work, so this
+# will find the latest available revision downloaded into the control server
+# repository
+
 - name: Find which is latest available LU packages patch in PCA repo
   shell: ls -1t 121430* | tail -1 | awk -F. '{print $1}'
   args:
@@ -8,35 +13,53 @@
   changed_when: false
   failed_when: "'121430' not in lu_patch.stdout"
 
+# This will check if the latest available revision of the LU patch is
+# already installed in the target host
+
 - name: Check LU packages patch level
   shell: /usr/bin/showrev -p | /usr/bin/grep {{ lu_patch.stdout }}
   changed_when: false
   failed_when: false
   register: lu_patch_level
 
+# If the above is not installed, uncompress the patch in the target server
+
 - name: Uncompress LU packages patch
   unarchive: src={{ pca_basedir }}/patches/{{ lu_patch.stdout }}.zip
              dest={{ pca_tempdir }}/pca_patches
   when: lu_patch_level.rc|int == 1
 
+# And now apply it
+
 - name: Apply latest LU packages patch
   shell: /usr/sbin/patchadd -M {{ pca_tempdir }}/pca_patches {{ lu_patch.stdout }}
   when: lu_patch_level.rc|int == 1
+
+# Now we store the inactive Boot Environments: those are listed as
+# "can delete" in lustatus
 
 - name: Find inactive BEs
   shell: /usr/sbin/lustatus | /usr/bin/awk '$5 == "yes" { print $1 }'
   register: inactive_bes
   changed_when: false
 
+# Remove those inactive Boot Environments
+# This pretty much makes sure that there will be enough space later on to
+# apply patches
+
 - name: Remove inactive BEs if any
   shell: /usr/sbin/ludelete {{ item }}
   with_items: "{{ inactive_bes.stdout_lines }}"
   when: inactive_bes.stdout_lines|length > 0
 
+# Upgrade all ZFS pools for sanity
+
 - name: Upgrade ZFS pools
   shell: /usr/sbin/zpool upgrade -a | /usr/bin/tail -1
   register: zpoolupgrade
   changed_when: zpoolupgrade.stdout != 'All pools are formatted using this version.'
+
+# Upgrade all ZFS filesystems for sanity
 
 - name: Upgrade ZFS filesystems
   shell: /usr/sbin/zfs upgrade -a | /usr/bin/awk '$3=="upgraded" {print $1}'

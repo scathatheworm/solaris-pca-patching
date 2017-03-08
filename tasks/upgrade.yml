@@ -1,15 +1,24 @@
 ---
+
+# Check for space to store the upgrade image in the temp dir
+
 - name: check for space in temp filesystem to copy upgrade image
   shell: /usr/bin/df -b {{ pca_tempdir }} | /usr/bin/tail -1 | /usr/bin/awk '{print $2}'
   register: tempspace
   failed_when: "tempspace.stdout|int <= 3145728"
   changed_when: false
 
+# Upload the upgrade image
+
 - name: Synchronize Solaris10u11 install image to target host
   synchronize: compress=no
                archive=yes
                src={{ pca_basedir }}/Solaris_10_0113/
                dest={{ pca_tempdir }}/Solaris_10_0113
+
+# As part of the supported process, the Live Upgrade packages need to be installed
+# from the upgrade image, so first we remove them from the running OS
+# and then we install from the upgrade image
 
 - name: Remove Live Upgrade packages
   svr4pkg: name={{ item }}
@@ -28,6 +37,9 @@
   - SUNWluu
   - SUNWlur
 
+# When the LU packages are uninstalled, its patches get removed as well
+# so we need to reapply these
+
 - name: Reapply Live Upgrade packages patch
   shell: "{{ pca_tempdir }}/pca -i 121430 -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches"
 
@@ -38,8 +50,12 @@
         group=root
         mode=0644
 
+# Create an ABE
+
 - name: Create ABE
   shell: /usr/sbin/lucreate -n {{ pca_abe.stdout }}
+
+# Upgrade the ABE using live upgrade. Log is stored in the defined workspace
 
 - name: Upgrade to Solaris10u11
   shell: "( ( nohup /usr/sbin/luupgrade -u -n {{ pca_abe.stdout }} -s {{ pca_tempdir }}/Solaris_10_0113 -k /var/tmp/no-autoreg > {{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log 2>&1& ) & )"
@@ -48,6 +64,8 @@
     chdir: "{{ pca_tempdir }}/pca_patches"
     creates: sol10u11_upgrade.log
 
+# Monitor the upgrade log for finishing sentence
+
 - name: Wait for Upgrade to complete
   wait_for: path={{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log
             search_regex='^Failsafe install is complete.*$'
@@ -55,17 +73,24 @@
             connect_timeout=60
             timeout=86400
 
+# Pull the upgrade log
+
 - name: Get Upgrade log
   fetch: src={{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log
          dest={{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_sol10u11_upgrade.log
          flat=yes
          fail_on_missing=yes
 
+# This is to ensure live upgrade finishes unmounting and cleaning after itself
+
 - name: Pause for 5 minutes to let Live Upgrade cleanup
   pause: minutes=5
 
 - name: Mount ABE for analysis
   shell: /usr/sbin/lumount {{ pca_abe.stdout }}
+
+# With the ABE upgraded to latest release, we'll need analyze, stage patches,
+# and upload them all over again
 
 - include: analyze.yml
 

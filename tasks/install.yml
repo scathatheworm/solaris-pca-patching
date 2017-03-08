@@ -1,10 +1,18 @@
 ---
+# Upload the list of prereq patches to be applied to the target host
+
 - name: Copy prereq list
   copy: src={{ pca_prereq }}
         dest={{ pca_tempdir}}/pca_patches/{{ pca_prereq }}
 
+# Apply all the prereq patches on the live BE
+
 - name: Install prerequisite patches in live BE
   shell: "{{ pca_tempdir }}/pca -i {{ pca_tempdir}}/pca_patches/{{ pca_prereq }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches"
+
+# Sometimes when applying some of the LU patches included in the prereq list
+# a bug ocurrs which messes up the /etc/zones/index file of the target host
+# and this is a simple fix for that
 
 - name: Fix for Sun CR 6804076
   lineinfile: dest=/etc/zones/index
@@ -12,10 +20,15 @@
               backrefs=yes
               line='global{{":"}}installed{{":"}}/'
 
+# Pull current date to use as ABE name
+
 - name: get current date for reference as ABE name
   command: /usr/bin/date +%Y%m%d
   register: pca_abe
   changed_when: false
+
+# If configuring release upgrade, set the variable used later in the code
+# and detect if already at latest release
 
 - name: Set solaris upgrade variable if desired
   set_fact: pca_solaris_upgrade_10u11=true
@@ -23,19 +36,28 @@
   - "'1/13' not in ansible_distribution_release"
   - pca_try_release_upgrade
 
+# If upgrade should be done, call all the upgrade tasks
+
 - include: upgrade.yml
   when:
   - pca_try_release_upgrade
   - pca_solaris_upgrade_10u11 is defined
   - pca_solaris_upgrade_10u11
 
+# Create ABE, if not doing upgrade, upgrade already handles ABE creation
+
 - name: Create ABE
   shell: /usr/sbin/lucreate -n {{ pca_abe.stdout }}
   when: pca_solaris_upgrade_10u11 is not defined
 
+# Same as previous task, mount ABE
+
 - name: Mount ABE
   shell: /usr/sbin/lumount {{ pca_abe.stdout }}
   when: pca_solaris_upgrade_10u11 is not defined
+
+# Run PCA to apply all the required patches to the ABE
+# This also logs the output to a sane place for centralization later
 
 - name: Install patches to ABE
   shell: "( ( nohup {{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R /.alt.{{ pca_abe.stdout }} > {{ pca_tempdir }}/pca_patches/pca.log 2>&1& ) & )"
@@ -44,6 +66,8 @@
     chdir: "{{ pca_tempdir }}/pca_patches"
     creates: pca.log
 
+# Here we wait for PCA to finish by searching the log file for the end string
+
 - name: Wait for patch installation to complete
   wait_for: path={{ pca_tempdir }}/pca_patches/pca.log
             search_regex='^Install Summary.*total.*successful.*skipped.*failed$'
@@ -51,11 +75,16 @@
             connect_timeout=60
             timeout=86400
 
+# Pull the installation log to the control srever
+
 - name: Get Installation log
   fetch: src={{ pca_tempdir }}/pca_patches/pca.log
          dest={{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_pca.log
          flat=yes
          fail_on_missing=yes
+
+# Send email with installation report attached, and if upgrade happened,
+# upgrade log as well
 
 - name: Email installation report
   shell: ( echo 'To{{":"}} {{ pca_destination_address }}'; echo 'From{{":"}} {{ pca_source_address }}'; echo 'Content-Type{{":"}} multipart/mixed; boundary=mailboundary'; echo 'MIME-Version{{":"}} 1.0'; echo 'Subject{{":"}} Solaris Patch Installation report - {{ inventory_hostname }}'; echo ; echo '--mailboundary' ; echo 'Content-Type{{":"}} text/plain; charset=us-ascii' ; echo 'Content-Disposition{{":"}} attachment; filename={{ inventory_hostname }}_pca.log' ; cat {{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_pca.log {% if pca_solaris_upgrade_10u11 is defined and pca_solaris_upgrade_10u11 %} ; echo ; echo '--mailboundary' ; echo 'Content-Type{{":"}} text/plain; charset=us-ascii' ; echo 'Content-Disposition{{":"}} attachment; filename={{ inventory_hostname }}_sol10u11_upgrade.log' ; cat {{ pca_basedir }}/{{ inventory_hostname }}/{{ inventory_hostname }}_sol10u11_upgrade.log {% endif %} ) | /usr/sbin/sendmail -t
@@ -65,8 +94,12 @@
   when:
   - pca_send_email
 
+# Upgrade the ABE ramdisk
+
 - name: Update ABE Ramdisk
   shell: "/.alt.{{ pca_abe.stdout }}/boot/solaris/bin/create_ramdisk -R /.alt.{{ pca_abe.stdout }}"
+
+# Cleanup all uploaded images from ABE
 
 - name: Cleanup ABE pushed patch repo
   file: path=/.alt.{{ pca_abe.stdout }}{{ pca_tempdir }}/{{ item }}
@@ -79,6 +112,8 @@
   - uname.out
   - Solaris_10_0113
 
+# Cleanup as above, from live BE
+
 - name: Cleanup pushed patch repo
   file: path={{ pca_tempdir }}/{{ item }}
         state=absent
@@ -90,17 +125,28 @@
   - uname.out
   - Solaris_10_0113
 
+# For later detection, we need to configure a local fact that will store the
+# ABE name that was patched with this role, this task cleans that up for sanity
+# if we have gotten this far, we need to make sure there is nothing else there
+# the patched ABE should be clean
+
 - name: Remove pca local fact from ABE
   file: state=absent
         path=/.alt.{{ pca_abe.stdout }}/etc/ansible/facts.d/pca.fact
 
+# Umount the ABE
+
 - name: Umount ABE
   shell: /usr/sbin/luumount {{ pca_abe.stdout }}
+
+# Setup the tree for custom facts
 
 - name: Create dir for custom facts
   file: state=directory
         recurse=yes
         path=/etc/ansible/facts.d
+
+# Configure the custom fact that holds the ABE name ready to activate
 
 - name: Populate custom fact with ABE ready for activation
   template: src=pca.fact.j2
