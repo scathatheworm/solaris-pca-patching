@@ -1,0 +1,11 @@
+{
+  "filesystems" : [
+{% for i in nestedfs.stdout_lines %}
+    "{{ i }}"
+    {%- if not loop.last -%}
+    ,
+    {% endif %}
+{% endfor %}
+
+  ] 
+}

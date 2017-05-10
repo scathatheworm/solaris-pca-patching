@@ -1,0 +1,11 @@
+{
+  "configfile" : [
+{% for i in lofsmounts.stdout_lines %}
+    "{{ i }}"
+    {%- if not loop.last -%}
+    ,
+    {% endif %}
+{% endfor %}
+
+  ] 
+}
