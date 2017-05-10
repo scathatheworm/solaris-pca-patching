@@ -13,6 +13,7 @@
   file: path={{ pca_basedir }}/{{ inventory_hostname }}
         state=directory
         mode=0775
+        owner={{ansible_user_id}}
   delegate_to: localhost
 
 # This will place the prereq patchlist in the working directory of the

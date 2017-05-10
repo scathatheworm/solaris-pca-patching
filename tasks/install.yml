@@ -134,17 +134,13 @@
   file: state=absent
         path=/.alt.{{ pca_abe.stdout }}/etc/ansible/facts.d/pca.fact
 
+- name: Blank startup log file for clean detection of init sequence in ABE
+  shell: "/usr/bin/cp /.alt.{{ pca_abe.stdout }}/var/svc/log/milestone-multi-user:default.log /.alt.{{ pca_abe.stdout }}/var/svc/log/milestone-multi-user:default.log.{{ pca_abe.stdout }} ; /usr/bin/cat /dev/null > /.alt.{{ pca_abe.stdout }}/var/svc/log/milestone-multi-user:default.log"
+
 # Umount the ABE
 
 - name: Umount ABE
   shell: /usr/sbin/luumount {{ pca_abe.stdout }}
-
-# Setup the tree for custom facts
-
-- name: Create dir for custom facts
-  file: state=directory
-        recurse=yes
-        path=/etc/ansible/facts.d
 
 # Configure the custom fact that holds the ABE name ready to activate
 

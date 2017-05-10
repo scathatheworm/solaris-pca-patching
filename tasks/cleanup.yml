@@ -35,6 +35,39 @@
   shell: /usr/sbin/patchadd -M {{ pca_tempdir }}/pca_patches {{ lu_patch.stdout }}
   when: lu_patch_level.rc|int == 1
 
+# Setup the tree for custom facts
+
+- name: Create dir for custom facts
+  file: state=directory
+        recurse=yes
+        path=/etc/ansible/facts.d
+
+# Fix for nested filesystems inside local-zone hosted mountpoints
+- name: Find filesystems nested to localzones
+  shell: for i in `/usr/sbin/zoneadm list -cvi | /usr/bin/grep -v global | /usr/bin/awk '$5=="native" && ($3=="running" || $3=="installed") {print $4}'` ; do /usr/bin/df -h 2>/dev/null | /usr/bin/grep $i/ | /usr/bin/awk '{print $1}' ; done
+  register: nestedfs
+  changed_when: false
+
+- name: Write local fact of nested filesystems
+  template: src=nestedfs.fact.j2 dest=/etc/ansible/facts.d/nestedfs.fact owner=root group=root mode=0644
+  when: nestedfs.stdout != ""
+
+# Find lofs mounts in zones
+- name: Find lofs mounts in zones
+  shell: for i in `/usr/sbin/zoneadm list -cvi | /usr/bin/grep -v global | /usr/bin/awk '$5=="native" && ($3=="running" || $3=="installed") {print $2}'` ; do egrep -l '  <filesystem.*type="lofs"' /etc/zones/$i.xml ; done
+  changed_when: false
+  register: lofsmounts
+  failed_when: false
+
+- name: Write local fact of config files with lofs mountpoints
+  template: src=lofsmounts.fact.j2 dest=/etc/ansible/facts.d/lofsmounts.fact owner=root group=root mode=0644
+  when: lofsmounts.stdout != ""
+
+- name: Comment out lofs mountpoints from zone configurations
+  shell: "/usr/bin/cp {{ item }} {{ item }}.anspca && /usr/bin/sed '/  <filesystem.*type..lofs/d' {{ item }} > {{ item }}.tmp && /usr/bin/mv {{ item }}.tmp {{ item }}"
+  with_items: "{{ lofsmounts.stdout_lines }}"
+  when: lofsmounts.stdout != ""
+
 # Now we store the inactive Boot Environments: those are listed as
 # "can delete" in lustatus
 
