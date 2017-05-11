@@ -135,7 +135,7 @@
         path=/.alt.{{ pca_abe.stdout }}/etc/ansible/facts.d/pca.fact
 
 - name: Blank startup log file for clean detection of init sequence in ABE
-  shell: "/usr/bin/cp /.alt.{{ pca_abe.stdout }}/var/svc/log/milestone-multi-user:default.log /.alt.{{ pca_abe.stdout }}/var/svc/log/milestone-multi-user:default.log.{{ pca_abe.stdout }} ; /usr/bin/cat /dev/null > /.alt.{{ pca_abe.stdout }}/var/svc/log/milestone-multi-user:default.log"
+  shell: "/usr/bin/cp /.alt.{{ pca_abe.stdout }}/var/svc/log/milestone-multi-user-server:default.log /.alt.{{ pca_abe.stdout }}/var/svc/log/milestone-multi-user-server:default.log.{{ pca_abe.stdout }} ; /usr/bin/cat /dev/null > /.alt.{{ pca_abe.stdout }}/var/svc/log/milestone-multi-user-server:default.log"
 
 # Umount the ABE
 
