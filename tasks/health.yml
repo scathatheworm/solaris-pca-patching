@@ -14,9 +14,9 @@
 # Any unhealthy pool will fail and stop the playbook run
 
 - name: Check health of all ZFS pools
-  shell: /usr/sbin/zpool status -x
+  shell: /usr/sbin/zpool status | /usr/bin/grep state | /usr/bin/grep -v ONLINE
   register: zpoolstatus
-  failed_when: zpoolstatus.stdout != 'all pools are healthy'
+  failed_when: zpoolstatus.rc|int != 1
   changed_when: false
 
 # Search for a valid mirror configuration of the root pool

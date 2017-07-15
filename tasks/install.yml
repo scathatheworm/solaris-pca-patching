@@ -60,11 +60,14 @@
 # This also logs the output to a sane place for centralization later
 
 - name: Install patches to ABE
-  shell: "( ( nohup {{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R /.alt.{{ pca_abe.stdout }} > {{ pca_tempdir }}/pca_patches/pca.log 2>&1& ) & )"
+  shell: "{{ pca_tempdir }}/pca -i {{ solaris_pca_operand }} -y -X {{ pca_tempdir }}/pca_patches -P {{ pca_tempdir }}/pca_patches {% if pca_ignorelist %} --ignore={{ pca_ignorelist }}{% endif %} -R /.alt.{{ pca_abe.stdout }} > {{ pca_tempdir }}/pca_patches/pca.log"
+  async: 86400
+  poll: 60
   args:
     executable: /usr/bin/bash
     chdir: "{{ pca_tempdir }}/pca_patches"
     creates: pca.log
+  failed_when: false
 
 # Here we wait for PCA to finish by searching the log file for the end string
 
@@ -74,7 +77,6 @@
             state=present
             connect_timeout=60
             timeout=86400
-  ignore_errors: true
 
 # Pull the installation log to the control srever
 

@@ -23,7 +23,8 @@ ABE Activation and Reboot is to be done under a separate role, solaris-pca-abere
 | `pca_patchdiag_dom_schedule` | '1' | Controls cron job for patchdiag.xref download |
 | `pca_patchdiag_monthly_schedule` | '*/3' | Controls cron job for patchdiag.xref download |
 | `pca_patchdiag_dow_schedule` | '*' | Controls cron job for patchdiag.xref download |
-| `pca_ignorelist` | empty | PCA ignore list, as given in PCA documentation (quote for space separated list |
+| `pca_ignorelist` | empty | PCA ignore list, as given in PCA documentation (quote for space separated list) |
+| `upgrade_zfs` | Controls if the role will perform zpool and zfs upgrade operations. This is disabled by default as it is not always safe |
 
 Available tags are:
 

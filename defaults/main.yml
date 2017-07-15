@@ -19,3 +19,4 @@ pca_parallel_patch_routines: 10
 pca_send_email: false
 pca_source_address:
 pca_destination_address:
+upgrade_zfs: false

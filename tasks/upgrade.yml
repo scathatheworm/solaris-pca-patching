@@ -58,7 +58,9 @@
 # Upgrade the ABE using live upgrade. Log is stored in the defined workspace
 
 - name: Upgrade to Solaris10u11
-  shell: "( ( nohup /usr/sbin/luupgrade -u -n {{ pca_abe.stdout }} -s {{ pca_tempdir }}/Solaris_10_0113 -k /var/tmp/no-autoreg > {{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log 2>&1& ) & )"
+  shell: "/usr/sbin/luupgrade -u -n {{ pca_abe.stdout }} -s {{ pca_tempdir }}/Solaris_10_0113 -k /var/tmp/no-autoreg > {{ pca_tempdir }}/pca_patches/sol10u11_upgrade.log"
+  async: 86400
+  poll: 60
   args:
     executable: /usr/bin/bash
     chdir: "{{ pca_tempdir }}/pca_patches"
@@ -82,9 +84,6 @@
          fail_on_missing=yes
 
 # This is to ensure live upgrade finishes unmounting and cleaning after itself
-
-- name: Pause for 5 minutes to let Live Upgrade cleanup
-  pause: minutes=5
 
 - name: Mount ABE for analysis
   shell: /usr/sbin/lumount {{ pca_abe.stdout }}
